@@ -10,7 +10,14 @@ import config
 import time
 import random
 import tensorflow as tf
+from numba import cuda,jit
+
 import numpy as np
+import torch
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
+
 
 FLAGS = config.flags.FLAGS
 
@@ -21,9 +28,8 @@ def set_seed(seed):
     tf.compat.v1.set_random_seed(seed)
     return None
 
-
-if __name__ == '__main__':
-
+@jit(target_backend='cuda')   
+def main():
     set_seed(1)
 
     logger_env = logging.getLogger('GridMARL')
@@ -46,5 +52,7 @@ if __name__ == '__main__':
     else:
         trainer.test()
 
-
     print("LOG_FILE:\t" + config.log_filename)
+
+if __name__ == '__main__':
+    main()

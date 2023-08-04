@@ -10,6 +10,7 @@ from envs.gui import canvas
 from torch.utils.tensorboard import SummaryWriter
 import os 
 import tensorflow as tf
+from numba import jit
 
 writer = SummaryWriter('logdir')
 

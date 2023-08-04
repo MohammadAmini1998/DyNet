@@ -20,7 +20,7 @@ h3_critic = h_critic  # hidden layer 3 size for the critic
 
 # Learning rates: 
 lr_actor = 0.00001   # learning rate for the actor
-lr_critic = 0.00001  # learning rate for the critic
+lr_critic = 0.0001  # learning rate for the critic
 lr_decay = 1  # learning rate decay (per episode)
 
 # The soft target update rate. 
