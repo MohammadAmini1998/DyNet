@@ -44,7 +44,7 @@ class PredatorAgent(object):
             self.action_selector = ActionSelectorNetwork(self.sess, self._n_agent, self._obs_dim_per_unit, self._action_dim_per_unit, self._name)
             self.weight_generator = WeightGeneratorNetwork(self.sess, self._n_agent, self._obs_dim)
 
-            self.weight_generator1 = WeightGeneratorNetwork1(self.sess, self._n_agent, self._obs_dim)
+            self.weight_generator1 = WeightGeneratorNetwork1(self.sess, self._n_agent, 32)
             self.critic = CriticNetwork(self.sess, self._n_agent, self._state_dim, self._name)
             self.critic1 = CriticNetwork1(self.sess, self._n_agent, self._state_dim, self._name)
 
@@ -83,7 +83,7 @@ class PredatorAgent(object):
 
         return action_list
 
-    def train(self, state, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority, done):
+    def train(self, state, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority,priority1, done):
 
         s = state
         o = obs_list
@@ -93,14 +93,15 @@ class PredatorAgent(object):
         o_ = obs_next_list
         c = schedule_n
         p = priority
+        p1=priority1
 
-        self.store_sample(s, o, a, r, s_, o_, c, p, done)
+        self.store_sample(s, o, a, r, s_, o_, c, p,p1, done)
         self.update_ac()
         return 0
 
-    def store_sample(self, s, o, a, r, s_, o_, c, p, done):
+    def store_sample(self, s, o, a, r, s_, o_, c, p,p1, done):
 
-        self.replay_buffer.add_to_memory((s, o, a, r, s_, o_, c, p, done))
+        self.replay_buffer.add_to_memory((s, o, a, r, s_, o_, c, p,p1, done))
         return 0
 
     def update_ac(self):
@@ -109,27 +110,36 @@ class PredatorAgent(object):
             return 0
 
         minibatch = self.replay_buffer.sample_from_memory()
-        s, o, a, r, s_, o_, c, p, d = map(np.array, zip(*minibatch))
+        s, o, a, r, s_, o_, c, p,p1, d = map(np.array, zip(*minibatch))
         o = np.reshape(o, [-1, self._obs_dim])
         o_ = np.reshape(o_, [-1, self._obs_dim])
-
-        p_ = self.weight_generator.target_schedule_for_obs(o_)
         
-        td_error, _ = self.critic.training_critic(s, r, s_, p, p_, d)  # train critic
-        td_error1, _ = self.critic1.training_critic(s, r, s_, p, p_, d)
+        
+        p_ = self.weight_generator.target_schedule_for_obs(o_)
+
+        next_obs_weight=np.concatenate((o_,p_),axis=1)
+        p_1 = self.weight_generator1.target_schedule_for_obs(next_obs_weight)
+        
+       
+
+        obs_weight=np.concatenate((o,p),axis=1)
+        
+        td_error, _ = self.critic.training_critic(s, r, s_, p, p_, d)  # train critic'
+        
+        _, _ = self.critic1.training_critic(s, r, s_, p1, p_1, d)
 
         _ = self.action_selector.training_actor(o, a, c, td_error)  # train actor
 
         wg_grads = self.critic.grads_for_scheduler(s, p)
 
-        wg_grads1 = self.critic1.grads_for_scheduler(s, p)
+        wg_grads1 = self.critic1.grads_for_scheduler(s, p1)
 
         _ = self.weight_generator.training_weight_generator(o, wg_grads)
         _ = self.critic.training_target_critic()  # train slow target critic
         _ = self.weight_generator.training_target_weight_generator()
 
 
-        _ = self.weight_generator1.training_weight_generator(o, wg_grads1)
+        _ = self.weight_generator1.training_weight_generator(obs_weight, wg_grads1)
         _ = self.critic1.training_target_critic()  # train slow target critic
         _ = self.weight_generator1.training_target_weight_generator()
 
@@ -138,18 +148,22 @@ class PredatorAgent(object):
     def schedule(self, obs_list):
         priority = self.weight_generator.schedule_for_obs(np.concatenate(obs_list)
                                                            .reshape(1, self._obs_dim))
+        obs_list=np.concatenate(obs_list).reshape(1, self._obs_dim)
+        obs_list=np.concatenate((obs_list,priority.reshape(1,-1)),axis=1)
+        priority1 = self.weight_generator1.schedule_for_obs(obs_list)
+        #priority and obs to second network: 
 
         if FLAGS.sch_type == "top":
-            schedule_idx = np.argsort(-priority)[:FLAGS.s_num]
+            schedule_idx = np.argsort(-priority1)[:FLAGS.s_num]
         elif FLAGS.sch_type == "softmax":
             sm = softmax(priority)
             schedule_idx = np.random.choice(self._n_agent, p=sm)
         else: # IF N_SUM == 1
-            schedule_idx = np.argmax(priority)
+            schedule_idx = np.argmax(priority1)
                             
         ret = np.zeros(self._n_agent)
         ret[schedule_idx] = 1.0
-        return ret, priority
+        return ret, priority, priority1
 
     def explore(self):
         return [random.randrange(self._action_dim_per_unit)

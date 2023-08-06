@@ -259,7 +259,7 @@ class CriticNetwork:
                              feed_dict={self.state_ph: state_ph,
                                         self.priority_ph: priority_ph})
     
-# Second Critic
+# Second Critic:
 class CriticNetwork1:
     def __init__(self, sess, n_agent, state_dim, nn_id=None):
 
