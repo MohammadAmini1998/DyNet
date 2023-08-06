@@ -189,7 +189,6 @@ class Trainer(object):
         max_len = max([len(x) for x in obs_final])
         padded_data = [np.pad(x, (0, max_len - len(x)), mode='constant') for x in obs_final]
         obs_n = np.array(padded_data)
-        print(obs_n)
         state = np.concatenate((info_n[0]['state'], h_schedule_n), axis=-1)
 
         return obs_n, state, h_schedule_n

@@ -1,0 +1,6 @@
+[INFO|main.py:35] 2023-08-06 14:57:02,278 > [Agent] Agent: schednet
+[INFO|trainer.py:29] 2023-08-06 14:57:03,749 > [Agent] SchedNet trainer is created
+[INFO|agent.py:25] 2023-08-06 14:57:03,750 > [Agent] Predator Agent is created
+[INFO|main.py:35] 2023-08-06 14:57:35,334 > [Agent] Agent: schednet
+[INFO|trainer.py:29] 2023-08-06 14:57:36,760 > [Agent] SchedNet trainer is created
+[INFO|agent.py:25] 2023-08-06 14:57:36,761 > [Agent] Predator Agent is created
