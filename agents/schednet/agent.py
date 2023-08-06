@@ -7,8 +7,9 @@ import tensorflow as tf
 
 from agents.schednet.replay_buffer import ReplayBuffer
 from agents.schednet.ac_network import ActionSelectorNetwork
-from agents.schednet.ac_network import CriticNetwork
+from agents.schednet.ac_network import CriticNetwork,CriticNetwork1
 from agents.schednet.sched_network import WeightGeneratorNetwork
+from agents.schednet.bit_network import WeightGeneratorNetwork1
 from agents.evaluation import Evaluation
 
 import logging
@@ -42,7 +43,10 @@ class PredatorAgent(object):
 
             self.action_selector = ActionSelectorNetwork(self.sess, self._n_agent, self._obs_dim_per_unit, self._action_dim_per_unit, self._name)
             self.weight_generator = WeightGeneratorNetwork(self.sess, self._n_agent, self._obs_dim)
+
+            self.weight_generator1 = WeightGeneratorNetwork1(self.sess, self._n_agent, self._obs_dim)
             self.critic = CriticNetwork(self.sess, self._n_agent, self._state_dim, self._name)
+            self.critic1 = CriticNetwork1(self.sess, self._n_agent, self._state_dim, self._name)
 
             tf.compat.v1.global_variables_initializer().run(session=self.sess)
             self.saver = tf.compat.v1.train.Saver()
@@ -112,12 +116,22 @@ class PredatorAgent(object):
         p_ = self.weight_generator.target_schedule_for_obs(o_)
         
         td_error, _ = self.critic.training_critic(s, r, s_, p, p_, d)  # train critic
+        td_error1, _ = self.critic1.training_critic(s, r, s_, p, p_, d)
+
         _ = self.action_selector.training_actor(o, a, c, td_error)  # train actor
 
         wg_grads = self.critic.grads_for_scheduler(s, p)
+
+        wg_grads1 = self.critic1.grads_for_scheduler(s, p)
+
         _ = self.weight_generator.training_weight_generator(o, wg_grads)
         _ = self.critic.training_target_critic()  # train slow target critic
         _ = self.weight_generator.training_target_weight_generator()
+
+
+        _ = self.weight_generator1.training_weight_generator(o, wg_grads1)
+        _ = self.critic1.training_target_critic()  # train slow target critic
+        _ = self.weight_generator1.training_target_weight_generator()
 
         return 0
 
