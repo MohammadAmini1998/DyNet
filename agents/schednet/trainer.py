@@ -91,6 +91,11 @@ class Trainer(object):
                 obs_n = obs_n_next
                 state = state_next
                 total_reward += np.sum(reward_n)
+
+
+                if global_step%10000==0:
+                    print(priority)
+                    print(priority1)
                 
 
                 with summary_writer.as_default():

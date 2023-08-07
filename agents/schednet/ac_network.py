@@ -309,7 +309,7 @@ class CriticNetwork1:
         # = r_i + gamma*Q_slow(s',mu_slow(s')) if s' is not terminal
         # = r_i if s' terminal
         targets = tf.expand_dims(self.reward_ph, 1) + tf.expand_dims(self.is_not_terminal_ph, 1) * gamma * self.slow_q_values
-        sch_target = tf.expand_dims(self.reward_ph, 1) + gammaComm * self.slow_sch_q_values
+        sch_target = tf.expand_dims(self.reward_ph, 1) + .99 * self.slow_sch_q_values
 
         # 1-step temporal difference errors
         self.td_errors = targets - self.q_values
