@@ -18,7 +18,7 @@ training_step = FLAGS.training_step
 testing_step = FLAGS.testing_step
 
 epsilon_dec = 1/training_step
-epsilon_min = 0.1
+epsilon_min = 0.01
 
 summary_writer = tf.summary.create_file_writer("logdir")
 writer = SummaryWriter()
@@ -36,7 +36,7 @@ class Trainer(object):
         
         # State and obs additionally include history information
         self._state_dim = self._env.get_info()[0]['state'].shape[0] + self._n_predator
-        self._obs_dim = obs_dim=self._agent_profile['predator']['obs_dim'][0] + 1
+        self._obs_dim =self._agent_profile['predator']['obs_dim'][0] + 1
         
         # Predator agent
         self._predator_agent = PredatorAgent(n_agent=self._agent_profile['predator']['n_agent'],
@@ -166,6 +166,7 @@ class Trainer(object):
             obs_final.append(obs_n_h[i])
         for i in range(self._n_prey):
             obs_final.append(obs_n[self._n_predator + i])
+            
         obs_n = np.array(obs_final)
         state = np.concatenate((state, h_schedule), axis=-1)
 
@@ -186,10 +187,7 @@ class Trainer(object):
             obs_final.append(obs_n_h[i])
         for i in range(self._n_prey):
             obs_final.append(obs_n_ws[self._n_predator + i])
-        max_len = max([len(x) for x in obs_final])
-        padded_data = [np.pad(x, (0, max_len - len(x)), mode='constant') for x in obs_final]
-        obs_n = np.array(padded_data)
-        print(obs_n)
+        obs_n = np.array(obs_final)
         state = np.concatenate((info_n[0]['state'], h_schedule_n), axis=-1)
 
         return obs_n, state, h_schedule_n
