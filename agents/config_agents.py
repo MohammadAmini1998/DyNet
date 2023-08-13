@@ -6,7 +6,7 @@ def config_agent(_flags):
 
     flags.DEFINE_string("agent", "schednet", "Agent")
 
-    flags.DEFINE_integer("training_step", 800000, "Training time step")
+    flags.DEFINE_integer("training_step", 1600000, "Training time step")
     flags.DEFINE_integer("testing_step", 2500, "Testing time step")
     flags.DEFINE_integer("max_step", 500, "Maximum time step per episode")
     flags.DEFINE_boolean("eval_on_train", True, "Evaluation for every eval_step")
@@ -15,7 +15,7 @@ def config_agent(_flags):
     # RL setting
     flags.DEFINE_float("df", 0.9, "Discount factor")
     flags.DEFINE_integer("b_size", 20000, "Size of the replay memory")
-    flags.DEFINE_integer("m_size", 256, "Minibatch size")
+    flags.DEFINE_integer("m_size", 128, "Minibatch size")
     flags.DEFINE_integer("pre_train_step", 10, "during [m_size * pre_step] take random action")
 
     # Network training setting

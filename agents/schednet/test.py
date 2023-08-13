@@ -1,5 +1,4 @@
-import tensorflow as tf 
-if tf.test.is_gpu_available():
-    print("GPU is available.")
-else:
-    print("GPU is not available.")
+import tensorflow as tf
+sess = tf.compat.v1.Session()
+gpu_available = tf.config.list_physical_devices('GPU')
+print("CUDA is available: ", gpu_available)
