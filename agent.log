@@ -4,3 +4,6 @@
 [INFO|main.py:35] 2023-08-06 14:57:35,334 > [Agent] Agent: schednet
 [INFO|trainer.py:29] 2023-08-06 14:57:36,760 > [Agent] SchedNet trainer is created
 [INFO|agent.py:25] 2023-08-06 14:57:36,761 > [Agent] Predator Agent is created
+[INFO|main.py:35] 2023-08-16 17:07:36,792 > [Agent] Agent: schednet
+[INFO|trainer.py:29] 2023-08-16 17:07:38,207 > [Agent] SchedNet trainer is created
+[INFO|agent.py:26] 2023-08-16 17:07:38,208 > [Agent] Predator Agent is created

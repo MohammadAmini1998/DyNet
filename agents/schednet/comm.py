@@ -105,12 +105,28 @@ def comm_encoded_obs(obs, c_input, action_dim, h_num, trainable=True):
 def encoder_network(e_input, out_dim, h_num, h_level, name="encoder", trainable=True):
     hidden = e_input
     for i in range(h_level):
-        hidden = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
-                                       kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
-                                       bias_initializer=tf.constant_initializer(0.1),  # biases
-                                       use_bias=True, trainable=trainable, name=name+str(i))(hidden)
+        # Multi-Head Self-Attention Layer
+        hidden_expanded = tf.expand_dims(hidden, axis=1)  # Add sequence_length dimension
+        hidden = tf.keras.layers.MultiHeadAttention(
+            num_heads=4, key_dim=h_num, trainable=trainable, name=name+"_self_attention_"+str(i)
+        )(hidden_expanded, hidden_expanded)
+        hidden = tf.squeeze(hidden, axis=1)  # Remove sequence_length dimension
+        hidden = tf.keras.layers.LayerNormalization(epsilon=1e-6, trainable=trainable)(hidden)
+        
+        # Position-Wise Feed-Forward Layer
+        ff_hidden = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
+                                          kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
+                                          bias_initializer=tf.constant_initializer(0.1),  # biases
+                                          use_bias=True, trainable=trainable, name=name+"_ffnn_"+str(i))(hidden)
+        ff_hidden = tf.keras.layers.LayerNormalization(epsilon=1e-6, trainable=trainable)(ff_hidden)
 
-    ret = tf.keras.layers.Dense(units=out_dim, activation=tf.nn.relu,
+        # Linear projection layer to adjust dimensions of hidden
+        hidden_projection = tf.keras.layers.Dense(units=h_num, trainable=trainable, name=name+"_projection_"+str(i))(hidden)
+        
+        # Add skip connection
+        hidden = hidden_projection + ff_hidden
+
+    ret = tf.keras.layers.Dense(units=out_dim,
                                 kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
                                 bias_initializer=tf.constant_initializer(0.1),  # biases
                                 use_bias=True, trainable=trainable, name=name+"_out")(hidden)
