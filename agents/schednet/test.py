@@ -1,2 +1,7 @@
 import tensorflow as tf
-print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+
+x = tf.constant([[1, 2, 3], [4, 5, 6]], dtype=tf.float32)
+
+mean = tf.reduce_mean(x)  # Result: 3.5
+
+print(mean)

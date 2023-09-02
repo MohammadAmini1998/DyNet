@@ -19,7 +19,7 @@ h2_critic = h_critic  # hidden layer 2 size for the critic
 h3_critic = h_critic  # hidden layer 3 size for the critic
 
 # Learning rates: 
-lr_actor = 0.00001   # learning rate for the actor
+lr_actor =  0.00001   # learning rate for the actor
 lr_critic = 0.0001  # learning rate for the critic
 lr_decay = 1  # learning rate decay (per episode)
 
@@ -68,14 +68,23 @@ class ActionSelectorNetwork:
         with tf.compat.v1.variable_scope(scope):
             self.actions = self.generate_actor_network(self.state_ph, trainable=True)
 
-        # Actor loss function (mean Q-values under current policy with regularization)
         self.actor_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=scope)
         self.responsible = tf.multiply(self.actions, self.a_onehot)
         log_prob = tf.compat.v1.log(tf.reduce_sum(self.responsible, axis=1, keepdims=True))
         entropy = -tf.reduce_sum(self.actions*tf.math.log(self.actions), 1) # calculates the entropy of the actions 
         #  Computes the actor loss by multiplying the log probabilities (log_prob) with the TD errors (self.td_errors),
         #  Adding a regularization term of 0.01 * entropy, and summing them all together.
-        self.loss = tf.reduce_sum(-(tf.multiply(log_prob, self.td_errors) + 0.01*entropy)) 
+        self.loss = tf.reduce_sum((-(tf.multiply(log_prob, self.td_errors) + 0.02*entropy))) 
+        
+
+
+        
+
+        # This calculates the gradients of the actor loss (self.loss) with respect to the actor variables (self.actor_vars)
+        var_grads = tf.gradients(self.loss, self.actor_vars)
+        self.actor_train_op = tf.compat.v1.train.AdamOptimizer(lr_actor * lr_decay).apply_gradients(zip(var_grads,self.actor_vars))
+    # method prepares the observations for each agent, passes them to
+    # comm.generate_comm_network, and returns the output of the actor network
 
         # This calculates the gradients of the actor loss (self.loss) with respect to the actor variables (self.actor_vars)
         var_grads = tf.gradients(self.loss, self.actor_vars)

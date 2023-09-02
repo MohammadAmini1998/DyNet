@@ -10,7 +10,6 @@ import config
 import time
 import random
 import tensorflow as tf
-from numba import cuda,jit
 
 import numpy as np
 import torch
@@ -28,7 +27,6 @@ def set_seed(seed):
     tf.compat.v1.set_random_seed(seed)
     return None
 
-@jit(target_backend='cuda')   
 def main():
     set_seed(1)
 
