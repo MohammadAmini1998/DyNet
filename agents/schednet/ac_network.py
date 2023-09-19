@@ -19,7 +19,7 @@ h2_critic = h_critic  # hidden layer 2 size for the critic
 h3_critic = h_critic  # hidden layer 3 size for the critic
 
 # Learning rates: 
-lr_actor =  0.00001   # learning rate for the actor
+lr_actor =  0.000005   # learning rate for the actor
 lr_critic = 0.0001  # learning rate for the critic
 lr_decay = 1  # learning rate decay (per episode)
 
@@ -74,7 +74,7 @@ class ActionSelectorNetwork:
         entropy = -tf.reduce_sum(self.actions*tf.math.log(self.actions), 1) # calculates the entropy of the actions 
         #  Computes the actor loss by multiplying the log probabilities (log_prob) with the TD errors (self.td_errors),
         #  Adding a regularization term of 0.01 * entropy, and summing them all together.
-        self.loss = tf.reduce_sum((-(tf.multiply(log_prob, self.td_errors) + 0.02*entropy))) 
+        self.loss = tf.reduce_sum((-(tf.multiply(log_prob, self.td_errors) + 0.01*entropy))) 
         
 
 

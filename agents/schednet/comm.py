@@ -53,22 +53,15 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
 def comm_encoded_obs(obs, action_dim, trainable=True):
     h_num=32
     hidden_1 = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
-                                     kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
-                                     bias_initializer=tf.constant_initializer(0.1),  # biases
                                      use_bias=True, trainable=trainable, name='sender_1')(obs)
     hidden_2 = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
-                                     kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
-                                     bias_initializer=tf.constant_initializer(0.1),  # biases
                                      use_bias=True, trainable=trainable, name='sender_2')(hidden_1)
 
     hidden_3 = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
-                                     kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
-                                     bias_initializer=tf.constant_initializer(0.1),  # biases
+
                                      use_bias=True, trainable=trainable, name='sender_3')(hidden_2)
 
     a = tf.keras.layers.Dense(units=action_dim, activation=tf.nn.softmax,
-                              kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
-                              bias_initializer=tf.constant_initializer(0.1),  # biases
                               use_bias=True, trainable=trainable, name='sender_4')(hidden_3)
     return a
 

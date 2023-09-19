@@ -109,7 +109,7 @@ class PredatorAgent(object):
         
         
         td_error, _ = self.critic.training_critic(s, r, s_, d)  # train critic
-        _ = self.action_selector.training_actor(o, a, td_error)  # train actor
+        a = self.action_selector.training_actor(o, a, td_error)  # train actor
 
         _ = self.critic.training_target_critic()  # train slow target critic
 
