@@ -18,7 +18,7 @@ training_step = FLAGS.training_step
 testing_step = FLAGS.testing_step
 
 epsilon_dec = 1/training_step
-epsilon_min = 0.01
+epsilon_min = 0.1
 
 summary_writer = tf.summary.create_file_writer("logdir")
 writer = SummaryWriter()
