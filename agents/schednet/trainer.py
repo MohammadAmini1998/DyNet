@@ -16,8 +16,8 @@ result = logging.getLogger('Result')
 
 training_step = FLAGS.training_step
 testing_step = FLAGS.testing_step
-
-epsilon_dec = 1/training_step
+step1=750000
+epsilon_dec = 1/750000
 epsilon_min = 0.01
 
 summary_writer = tf.summary.create_file_writer("logdir")
@@ -192,9 +192,10 @@ class Trainer(object):
             obs_final.append(obs_n_h[i])
         for i in range(self._n_prey):
             obs_final.append(obs_n_ws[self._n_predator + i])
-        max_len = max([len(x) for x in obs_final])
-        padded_data = [np.pad(x, (0, max_len - len(x)), mode='constant') for x in obs_final]
-        obs_n = np.array(padded_data)
+        # max_len = max([len(x) for x in obs_final])
+        # padded_data = [np.pad(x, (0, max_len - len(x)), mode='constant') for x in obs_final]
+        # obs_n = np.array(padded_data)
+        obs_n = np.array(obs_final)
         state = np.concatenate((info_n[0]['state'], h_schedule_n), axis=-1)
 
         return obs_n, state, h_schedule_n

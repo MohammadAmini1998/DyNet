@@ -10,7 +10,7 @@ FLAGS = config.flags.FLAGS
 
 h1_scheduler = 32  # hidden layer 1 size 
 h2_scheduler = 32  # hidden layer 2 size 
-lr_wg = .000001   # learning rate for the weight generator
+lr_wg = 0.00001  # learning rate for the weight generator
 lr_decay = 1  # learning rate decay (per episode)
 tau = 5e-2 # soft target update rate
 
