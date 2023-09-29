@@ -147,13 +147,20 @@ class Trainer(object):
             # Exploration: Schedule k random agent
             priority = np.random.rand(self._n_predator)
             priority1 = np.random.rand(self._n_predator)
-            i = np.argsort(-priority1)[:FLAGS.s_num]  
-            ret = np.full(self._n_predator, 0.0)
-            ret[i] = 1.0
-            return ret, priority,priority1
+            sorted_agents = np.argsort(-priority1)
+            allocation = np.zeros(4)
+            remaining_bandwidth = FLAGS.capa
+    
+    # Allocate bandwidth to agents starting from the largest priority1 values
+            while remaining_bandwidth>0:
+                for agent in sorted_agents:
+                        agent_allocation = np.ceil((priority1[agent])*remaining_bandwidth)
+                        allocation[agent] = agent_allocation
+                        remaining_bandwidth -= agent_allocation
+            return allocation,priority,priority1
         else:
             # Exploitation
-            return self._predator_agent.schedule(predator_obs)
+            return self._predator_agent.schedule(predator_obs,FLAGS.capa)
 
     def train_agents(self, state, obs_n, action_n, reward_n, state_next, obs_n_next, schedule_n, priority,priority1, done):
         

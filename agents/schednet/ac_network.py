@@ -48,7 +48,7 @@ class ActionSelectorNetwork:
         self.next_state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, obs_dim_per_unit*n_agent])
         # Concat action space
         self.action_ph = tf.compat.v1.placeholder(dtype=tf.int32, shape=[None, n_agent])
-        self.schedule_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, self.n_agent])
+        self.schedule_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, self.n_agent * FLAGS.capa])
 
         # It is reshaped using tf.reshape and transformed into a one-hot encoding using tf.one_hot.
         # It has a shape of [-1, action_dim * n_agent], where -1 implies that the first dimension is automatically inferred
@@ -65,7 +65,7 @@ class ActionSelectorNetwork:
         #  The state_ph and schedule_ph are passed as inputs to the method. The trainable parameter is set to True, indicating that the weights of the actor network should be updated during training.
         #  The resulting actions are stored in the self.actions attribute.
         with tf.compat.v1.variable_scope(scope):
-            self.actions = self.generate_actor_network(self.state_ph, self.schedule_ph, trainable=True)
+            self.actions,self.message,self.schedule,self.num = self.generate_actor_network(self.state_ph, self.schedule_ph, trainable=True)
 
         # Actor loss function (mean Q-values under current policy with regularization)
         self.actor_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=scope)
@@ -100,6 +100,14 @@ class ActionSelectorNetwork:
     #  The method returns the calculated actions.
 
     def action_for_state(self, state_ph, schedule_ph):
+        # print( self.sess.run(self.num,
+        #                      feed_dict={self.state_ph: state_ph,
+        #                                 self.schedule_ph: schedule_ph,
+        #                                 self.is_training_ph: False}))
+        # print( self.sess.run(self.schedule,
+        #                      feed_dict={self.state_ph: state_ph,
+        #                                 self.schedule_ph: schedule_ph,
+        #                                 self.is_training_ph: False}))
         return self.sess.run(self.actions,
                              feed_dict={self.state_ph: state_ph,
                                         self.schedule_ph: schedule_ph,
@@ -114,6 +122,7 @@ class ActionSelectorNetwork:
     #  The method does not return any value.
 
     def training_actor(self, state_ph, action_ph, schedule_ph, td_errors):
+       
         return self.sess.run(self.actor_train_op,
                              feed_dict={self.state_ph: state_ph,
                                         self.action_ph: action_ph,

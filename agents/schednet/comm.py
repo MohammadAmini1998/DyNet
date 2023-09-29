@@ -5,6 +5,7 @@ import tensorflow as tf
 import numpy as np
 import config
 import sys
+import torch 
 
 FLAGS = config.flags.FLAGS
 
@@ -40,12 +41,12 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
         for i in range(n_agent):
             aggr_scope = "aggr" + str(i)
             with tf.compat.v1.variable_scope(aggr_scope):
-                aggr_out = decode_concat_network(encoder_list, schedule, capacity, decoder_out_dim)
-            aggr_list.append(aggr_out)
+                aggr_out,schedule,inp = decode_concat_network(encoder_list, schedule, capacity, decoder_out_dim)
+                aggr_list.append(aggr_out)
 
     else:
         with tf.variable_scope(aggr_scope):
-            aggr_out = decode_concat_network(encoder_list, schedule, capacity, decoder_out_dim)
+            aggr_out,schedule = decode_concat_network(encoder_list, schedule, capacity, decoder_out_dim)
         for i in range(n_agent):
             aggr_list.append(aggr_out)
 
@@ -60,7 +61,7 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
 
         actions.append(agent_actor)
 
-    return tf.concat(actions, axis=-1)
+    return tf.concat(actions, axis=-1),aggr_out,schedule,inp
 
 #  the function generates an actor network for each predator agent's communication action
 #  using the comm_encoded_obs() function, which takes in the observation of the predator
@@ -74,6 +75,7 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
 
 # Action selector: 
 def comm_encoded_obs(obs, c_input, action_dim, h_num, trainable=True):
+    
     c_input = tf.concat([obs, c_input], axis=1)
     hidden_1 = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
                                      kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
@@ -106,13 +108,11 @@ def encoder_network(e_input, out_dim, h_num, h_level, name="encoder", trainable=
     hidden = e_input
     for i in range(h_level):
         hidden = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
-                                          kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
-                                          bias_initializer=tf.constant_initializer(0.1),  # biases
-                                          use_bias=True, trainable=trainable, name=name+"_ffnn_"+str(i))(hidden)
+                                       kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
+                                       bias_initializer=tf.constant_initializer(0.1),  # biases
+                                       use_bias=True, trainable=trainable, name=name+str(i))(hidden)
 
- 
-
-    ret = tf.keras.layers.Dense(units=out_dim,activation=tf.nn.relu,
+    ret = tf.keras.layers.Dense(units=out_dim, activation=tf.nn.relu,
                                 kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
                                 bias_initializer=tf.constant_initializer(0.1),  # biases
                                 use_bias=True, trainable=trainable, name=name+"_out")(hidden)
@@ -131,11 +131,20 @@ def encoder_network(e_input, out_dim, h_num, h_level, name="encoder", trainable=
 
 # For example, if the masked communication messages tensor is [2, 3, 4, 6, 8, 9], the reshaped tensor will be [[2, 3, 4, 6, 8, 9]], because there is only one example in the batch. The first two elements of the tensor correspond to the communication message from the second predator agent, the next two elements correspond to the communication message from the third predator agent, and the final two elements correspond to the communication message from the sixth predator agent.
 # The decode_concat_network() function returns the reshaped tensor, which can then be used as input to the comm_encoded_obs() function to generate a probability distribution over the possible communication actions, as I explained in my previous response.
-
-
 def decode_concat_network(m_input_list, schedule, capacity, out_dim):
-
     inp = tf.stack(m_input_list, axis=-2)
-    print(inp)
-    masked_msg = tf.boolean_mask(tf.reshape(inp, [-1, capacity]), tf.reshape(tf.cast(schedule, tf.bool), [-1]))
-    return tf.reshape(masked_msg, [-1, FLAGS.s_num * capacity], name='scheduled')
+    flattened_schedule = tf.reshape(schedule, [-1])  # Flatten the schedule tensor
+
+    # Create a boolean mask based on the updated schedule
+    mask = tf.reshape(flattened_schedule, [-1])  # No need to cast to tf.bool
+
+    flattened_inp = tf.reshape(inp, [-1])  # Flatten inp to shape [-1]
+
+    masked_msg = tf.boolean_mask(flattened_inp, mask)  # Apply the mask element-wise
+
+    x = tf.reshape(masked_msg, [-1, capacity], name='scheduled')
+
+    return x, schedule,inp
+
+
+
