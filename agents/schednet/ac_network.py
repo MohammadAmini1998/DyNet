@@ -100,11 +100,18 @@ class ActionSelectorNetwork:
     #  The method returns the calculated actions.
 
     def action_for_state(self, state_ph, schedule_ph):
+
+        # print( self.sess.run(self.schedule,
+        #                      feed_dict={self.state_ph: state_ph,
+        #                                 self.schedule_ph: schedule_ph,
+        #                                 self.is_training_ph: False}))
+        
         # print( self.sess.run(self.num,
         #                      feed_dict={self.state_ph: state_ph,
         #                                 self.schedule_ph: schedule_ph,
         #                                 self.is_training_ph: False}))
-        # print( self.sess.run(self.schedule,
+        
+        # print( self.sess.run(self.message,
         #                      feed_dict={self.state_ph: state_ph,
         #                                 self.schedule_ph: schedule_ph,
         #                                 self.is_training_ph: False}))
