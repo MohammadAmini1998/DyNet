@@ -4,7 +4,7 @@ from __future__ import print_function, division, absolute_import
 import random
 import numpy as np
 import tensorflow as tf
-
+import math 
 from agents.schednet.replay_buffer import ReplayBuffer
 from agents.schednet.ac_network import ActionSelectorNetwork
 from agents.schednet.ac_network import CriticNetwork,CriticNetwork1
@@ -100,6 +100,7 @@ class PredatorAgent(object):
         return 0
 
     def store_sample(self, s, o, a, r, s_, o_, c, p,p1, done):
+        # print(c)
         c_new=self.convert(c,FLAGS.capa)
         self.replay_buffer.add_to_memory((s, o, a, r, s_, o_, c,c_new, p,p1, done))
         return 0
@@ -165,15 +166,18 @@ class PredatorAgent(object):
         priority1 = self.weight_generator1.schedule_for_obs(obs_list, priority.reshape(1,self._n_agent))
 
         # Sort the agents based on priority1 in descending order
-        sorted_agents = np.argsort(-priority1)
-        
+        softmax_weights = np.exp(priority1) / np.sum(np.exp(priority1))
         allocation = np.zeros(self._n_agent)
+
+        sorted_agents = np.argsort(-softmax_weights)
+        # print(priority1)
+        # print(sorted_agents)
+        
         remaining_bandwidth = l
-    
     # Allocate bandwidth to agents starting from the largest priority1 values
         while remaining_bandwidth>0:
             for agent in sorted_agents:
-                    agent_allocation = np.ceil((priority1[agent])*remaining_bandwidth)
+                    agent_allocation = np.ceil((softmax_weights[agent]*remaining_bandwidth))
                     allocation[agent] = agent_allocation
                     remaining_bandwidth -= agent_allocation
         # print(priority1)

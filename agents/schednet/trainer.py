@@ -1,4 +1,5 @@
 from __future__ import print_function, division, absolute_import
+import math 
 
 import numpy as np
 from agents.schednet.agent import PredatorAgent
@@ -150,11 +151,12 @@ class Trainer(object):
             sorted_agents = np.argsort(-priority1)
             allocation = np.zeros(4)
             remaining_bandwidth = FLAGS.capa
-    
+            softmax_weights = np.exp(priority1) / np.sum(np.exp(priority1))
+
     # Allocate bandwidth to agents starting from the largest priority1 values
             while remaining_bandwidth>0:
                 for agent in sorted_agents:
-                        agent_allocation = np.ceil((priority1[agent])*remaining_bandwidth)
+                        agent_allocation = np.ceil((softmax_weights[agent]*remaining_bandwidth))
                         allocation[agent] = agent_allocation
                         remaining_bandwidth -= agent_allocation
             return allocation,priority,priority1
