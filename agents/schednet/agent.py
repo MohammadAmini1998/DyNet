@@ -7,7 +7,7 @@ import tensorflow as tf
 import math 
 from agents.schednet.replay_buffer import ReplayBuffer
 from agents.schednet.ac_network import ActionSelectorNetwork
-from agents.schednet.ac_network import CriticNetwork,CriticNetwork1
+from agents.schednet.ac_network import CriticNetwork
 from agents.schednet.sched_network import WeightGeneratorNetwork
 from agents.schednet.bit_network import WeightGeneratorNetwork1
 from agents.evaluation import Evaluation
@@ -46,7 +46,6 @@ class PredatorAgent(object):
 
             self.weight_generator1 = WeightGeneratorNetwork1(self.sess, self._n_agent, self._obs_dim)
             self.critic = CriticNetwork(self.sess, self._n_agent, self._state_dim, self._name)
-            self.critic1 = CriticNetwork1(self.sess, self._n_agent, self._state_dim, self._name)
 
             tf.compat.v1.global_variables_initializer().run(session=self.sess)
             self.saver = tf.compat.v1.train.Saver()
@@ -137,15 +136,14 @@ class PredatorAgent(object):
 
     
         
-        td_error, _ = self.critic.training_critic(s, r, s_, p, p_, d)  # train critic'
+        td_error, _ = self.critic.training_critic(s, r, s_, p, p_,p1,p_1, d)  # train critic'
         
-        _, _ = self.critic1.training_critic(s, r, s_, p1, p_1, d)
 
         _ = self.action_selector.training_actor(o, a, c_new, td_error)  # train actor
 
         wg_grads = self.critic.grads_for_scheduler(s, p)
 
-        wg_grads1 = self.critic1.grads_for_scheduler(s, p1)
+        wg_grads1 = self.critic.grads_for_scheduler1(s, p1)
 
         _ = self.weight_generator.training_weight_generator(o, wg_grads)
         _ = self.critic.training_target_critic()  # train slow target critic
@@ -153,7 +151,6 @@ class PredatorAgent(object):
 
 
         _ = self.weight_generator1.training_weight_generator(o,p , wg_grads1)
-        _ = self.critic1.training_target_critic()  # train slow target critic
         _ = self.weight_generator1.training_target_weight_generator()
 
         return 0
