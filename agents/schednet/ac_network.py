@@ -191,15 +191,18 @@ class CriticNetwork:
         # = r_i if s' terminal
         targets = tf.expand_dims(self.reward_ph, 1) + tf.expand_dims(self.is_not_terminal_ph, 1) * gamma * self.slow_q_values
         sch_target = tf.expand_dims(self.reward_ph, 1) + gammaComm * self.slow_sch_q_values
+        sch_target1 = tf.expand_dims(self.reward_ph, 1) + gammaComm * self.slow_sch_q_values1
 
         # 1-step temporal difference errors
         self.td_errors = targets - self.q_values
         sch_td_errors = sch_target - self.sch_q_values
 
+        sch_td_errors1 = sch_target1 - self.sch_q_values1
+
        # compute critic gradients
         optimizer = tf.compat.v1.train.AdamOptimizer(lr_critic * lr_decay)
         critic_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=scope)
-        critic_loss = tf.reduce_mean(tf.square(self.td_errors) + tf.square(sch_td_errors))
+        critic_loss = tf.reduce_mean(tf.square(self.td_errors) + tf.square(sch_td_errors)+ tf.square(sch_td_errors1))
         
 
 # minimize critic loss
@@ -258,17 +261,17 @@ class CriticNetwork:
                                    bias_initializer=tf.constant_initializer(0.1), 
                                    name='dense_c4_sch', use_bias=False)(sch_hidden_3)
         
-        h2_sch = tf.concat([hidden_2, sch_val1], axis=1)
+        h2_sch1 = tf.concat([hidden_2, sch_val1], axis=1)
 
-        sch_hidden_3 = tf.keras.layers.Dense( h3_critic, activation=tf.nn.relu,
+        sch_hidden1_3 = tf.keras.layers.Dense( h3_critic, activation=tf.nn.relu,
                                    kernel_initializer=tf.random_normal_initializer(0., .1),
                                    bias_initializer=tf.constant_initializer(0.1), 
-                                   use_bias=True, trainable=trainable, name='dense_c3_sch')(h2_sch)
+                                   use_bias=True, trainable=trainable, name='dense_c3_sch')(h2_sch1)
 
         sch_q_values1 = tf.keras.layers.Dense( 1, trainable=trainable,
                                    kernel_initializer=tf.random_normal_initializer(0., .1),  
                                    bias_initializer=tf.constant_initializer(0.1), 
-                                   name='dense_c4_sch', use_bias=False)(sch_hidden_3)
+                                   name='dense_c4_sch', use_bias=False)(sch_hidden1_3)
 
 
         
