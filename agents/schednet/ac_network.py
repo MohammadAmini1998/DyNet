@@ -165,6 +165,7 @@ class CriticNetwork:
         self.priority_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, self.n_agent])
         self.next_priority_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, self.n_agent])
         # Second weight generator 
+        
         self.priority_ph1 = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, self.n_agent])
         self.next_priority_ph1 = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, self.n_agent])
         with tf.compat.v1.variable_scope(scope):
