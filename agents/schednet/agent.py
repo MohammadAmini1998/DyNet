@@ -85,6 +85,7 @@ class PredatorAgent(object):
     def train(self, state, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority,priority1, done):
 
         s = state
+        
         o = obs_list
         a = action_list
         r = np.sum(reward_list)
@@ -131,19 +132,22 @@ class PredatorAgent(object):
         p_ = np.reshape(p_, [-1, self._n_agent])
 
         p_1 = self.weight_generator1.target_schedule_for_obs(o_,p_)
-        
+
+        # msg=self.action_selector.get_messages(o,c_new)      
+        # print(msg)  
+        # print(c_new)
        
 
     
         
-        td_error, _ = self.critic.training_critic(s, r, s_, p, p_,p1,p_1, d)  # train critic'
+        td_error, _ = self.critic.training_critic(o, r, o_, p, p_,p1,p_1, d)  # train critic'
         
 
         _ = self.action_selector.training_actor(o, a, c_new, td_error)  # train actor
 
-        wg_grads = self.critic.grads_for_scheduler(s, p)
+        wg_grads = self.critic.grads_for_scheduler(o, p)
 
-        wg_grads1 = self.critic.grads_for_scheduler1(s, p1)
+        wg_grads1 = self.critic.grads_for_scheduler1(o, p1)
 
         _ = self.weight_generator.training_weight_generator(o, wg_grads)
         _ = self.critic.training_target_critic()  # train slow target critic
