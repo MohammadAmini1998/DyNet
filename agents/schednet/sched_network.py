@@ -67,6 +67,7 @@ class WeightGeneratorNetwork:
         return schedule
 
     def generate_wg_network(self, obs, trainable=True):
+        
         hidden_1 = tf.compat.v1.layers.dense(obs, h1_scheduler, activation=tf.nn.relu,
                                    kernel_initializer=tf.random_normal_initializer(0., .1),
                                    bias_initializer=tf.constant_initializer(0.1),  

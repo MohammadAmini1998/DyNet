@@ -54,8 +54,6 @@ class WeightGeneratorNetwork1:
         self.update_slow_targets_op_i = tf.group(*update_slow_target_ops_i)
 
     def generate_wg(self, obs, weight, trainable=True):
-        print(obs.shape)
-        print(weight.shape)
         obs_list = list()
         sched_list = list()
 

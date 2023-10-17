@@ -67,22 +67,22 @@ class PredatorAgent(object):
     # agent. The method then samples an action for
     #  each predator agent using the corresponding probability distribution and returns the list of actions.
     
-    def act(self, obs_list, schedule_list):
+    def act(self, obs_list,weight, schedule_list):
         c_new=self.convert(schedule_list,FLAGS.capa)
         c_new=np.array([c_new])
+        weight=weight.reshape(1, 4)
         action_prob_list = self.action_selector.action_for_state(np.concatenate(obs_list)
-                                                                   .reshape(1, self._obs_dim),c_new)
+                                                                   .reshape(1, self._obs_dim),weight,c_new)
 
         if np.isnan(action_prob_list).any():
             raise ValueError('action_prob contains NaN')
-
         action_list = []
         for action_prob in action_prob_list.reshape(self._n_agent, self._action_dim_per_unit):
             action_list.append(np.random.choice(len(action_prob), p=action_prob))
 
-        return action_list
+        return action_list,action_prob_list
 
-    def train(self, state, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority,priority1, done):
+    def train(self, state, obs_list, action_list,probs, reward_list, state_next, obs_next_list, schedule_n, priority,priority1, done,global_step):
 
         s = state
         
@@ -95,15 +95,21 @@ class PredatorAgent(object):
         p = priority
         p1=priority1
 
-        self.store_sample(s, o, a, r, s_, o_, c, p,p1, done)
-        self.update_ac()
-        return 0
+        self.store_sample(s, o, a,probs, r, s_, o_, c, p,p1, done)
+        if global_step < FLAGS.m_size * FLAGS.pre_train_step:
+            self.store_sample(s, o, a,probs, r, s_, o_, c, p,p1, done)
+            return 0
+        else:
+            self.store_sample(s, o, a,probs, r, s_, o_, c, p,p1, done)
+            self.update_ac(global_step)
+            return 0
 
-    def store_sample(self, s, o, a, r, s_, o_, c, p,p1, done):
+    def store_sample(self, s, o, a,probs, r, s_, o_, c, p,p1, done):
         # print(c)
         c_new=self.convert(c,FLAGS.capa)
-        self.replay_buffer.add_to_memory((s, o, a, r, s_, o_, c,c_new, p,p1, done))
+        self.replay_buffer.add_to_memory((s, o, a,probs, r, s_, o_, c,c_new, p,p1, done))
         return 0
+    
     def convert(self,c,capacity):
         result = []
         for num in c:
@@ -114,43 +120,78 @@ class PredatorAgent(object):
                 result.extend([True] * min(num, capacity))
                 result.extend([False] * (capacity - num))
         return result
-    
-    def update_ac(self):
+    def to_bandwidth(self,priority):
+        allocation = np.zeros(4)
+        sorted_agents = np.argsort(-priority)
+        remaining_bandwidth = FLAGS.capa
+        softmax_weights = np.exp(priority) / np.sum(np.exp(priority))
+
+    # Allocate bandwidth to agents starting from the largest priority1 values
+        while remaining_bandwidth>0:
+            for agent in sorted_agents:
+                    agent_allocation = np.ceil((softmax_weights[agent]*remaining_bandwidth))
+                    allocation[agent] = agent_allocation
+                    remaining_bandwidth -= agent_allocation
+        return allocation
+        
+
+
+
+    def update_ac(self,time_step):
         
         if len(self.replay_buffer.replay_memory) < FLAGS.pre_train_step * FLAGS.m_size:
             return 0
 
         minibatch = self.replay_buffer.sample_from_memory()
-        s, o, a, r, s_, o_, c,c_new, p,p1, d = map(np.array, zip(*minibatch))
+        s, o, a,probs, r, s_, o_, c,c_new, p,p1, d = map(np.array, zip(*minibatch))
         o = np.reshape(o, [-1, self._obs_dim])
+    
         o_ = np.reshape(o_, [-1, self._obs_dim])
-
+        
         p = np.reshape(p, [-1, self._n_agent])
         
         p_ = self.weight_generator.target_schedule_for_obs(o_)
-
         p_ = np.reshape(p_, [-1, self._n_agent])
-
         p_1 = self.weight_generator1.target_schedule_for_obs(o_,p_)
+        c_new_next=[]
+        for weight in p_1:
+            result=self.to_bandwidth(weight)
+            result=self.convert(result,FLAGS.capa)
+            c_new_next.append(result)
 
-        # msg=self.action_selector.get_messages(o,c_new)      
-        # print(msg)  
-        # print(c_new)
-       
+        msg=self.action_selector.get_messages(o,c_new) 
 
-    
+
+        next_msg=self.action_selector.get_next_messages(o_,c_new_next)  
+
         
-        td_error, _ = self.critic.training_critic(o, r, o_, p, p_,p1,p_1, d)  # train critic'
+        # s= msg+p+p1
+        # # s=list(s)
+        
+        # s_= next_msg+p_+p_1
+        # s_=list(s_)
+        # s = np.concatenate((msg, p,p1), axis=1)
+        # s_ = np.concatenate((next_msg, p_,p_1), axis=1)
+        # msg = np.concatenate([msg, np.expand_dims(time_step, axis=0)], axis=1) 
+        # next_msg = np.concatenate([next_msg, np.expand_dims(time_step, axis=0)], axis=1) 
+        # print(msg.shape)
+
+        td_error, _ = self.critic.training_critic(msg, r, next_msg, p, p_,p1,p_1, d)  # train critic'
         
 
-        _ = self.action_selector.training_actor(o, a, c_new, td_error)  # train actor
+        # print(p1.shape)
+        probs = tf.reshape(probs, [256, 20]).numpy()
+        _ = self.action_selector.training_actor(o, a,p, c_new,probs, td_error)  # train actor
 
-        wg_grads = self.critic.grads_for_scheduler(o, p)
 
-        wg_grads1 = self.critic.grads_for_scheduler1(o, p1)
+        wg_grads = self.critic.grads_for_scheduler(msg, p)
+
+        wg_grads1 = self.critic.grads_for_scheduler1(next_msg, p1)
 
         _ = self.weight_generator.training_weight_generator(o, wg_grads)
         _ = self.critic.training_target_critic()  # train slow target critic
+
+        _ = self.action_selector.training_target_actor()
         _ = self.weight_generator.training_target_weight_generator()
 
 
@@ -208,6 +249,7 @@ class PredatorAgent(object):
 
     def explore(self):
         return [random.randrange(self._action_dim_per_unit)
+                for _ in range(self._n_agent)], [random.randrange(self._action_dim_per_unit)
                 for _ in range(self._n_agent)]
 
 

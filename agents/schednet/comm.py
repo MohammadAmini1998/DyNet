@@ -15,7 +15,7 @@ FLAGS = config.flags.FLAGS
 # of all predator agents and the communication schedule for the current step and generates a concatenated 
 # communication message for all predator agents using the decode_concat_network() function.
 
-def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, trainable=True, share=False, schedule=None):
+def generate_comm_network(obs_list, obs_dim_per_unit,weight, action_dim, n_agent, trainable=True, share=False, schedule=None):
     actions = list()
     h_num = 32
 
@@ -33,6 +33,7 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
         # Statement creates a variable scope for the encoder network. A variable scope is a way to organize the variables used in a
         # TensorFlow graph, and it allows you to reuse variables across different parts of the graph.
         with tf.compat.v1.variable_scope(encoder_scope):
+            
             encoder = encoder_network(obs_list[i], capacity, 32, 1)
         encoder_list.append(encoder)
 
@@ -57,7 +58,7 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
             scope = "comm" + str(i)
 
         with tf.compat.v1.variable_scope(scope):
-            agent_actor = comm_encoded_obs(obs_list[i], aggr_list[i], action_dim, h_num, trainable)
+            agent_actor = comm_encoded_obs(obs_list[i],weight, aggr_list[i], action_dim, h_num, trainable)
 
         actions.append(agent_actor)
 
@@ -74,9 +75,10 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
 #  of encoder_network() is a tensor of shape (batch_size, out_dim).
 
 # Action selector: 
-def comm_encoded_obs(obs, c_input, action_dim, h_num, trainable=True):
+def comm_encoded_obs(obs,weight, c_input, action_dim, h_num, trainable=True):
     
-    c_input = tf.concat([obs, c_input], axis=1)
+    c_input = tf.concat([obs, weight,c_input], axis=1)
+
     hidden_1 = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
                                      kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
                                      bias_initializer=tf.constant_initializer(0.1),  # biases
