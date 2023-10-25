@@ -199,7 +199,7 @@ class PredatorAgent(object):
         # print(priority1)
         # print(allocation)
         
-
+        #!@#123123123
     # Adjust the allocation to ensure the total sum is equal to l
         # if np.sum(allocation) < l:
         #     remaining_allocation = l - np.sum(allocation)
