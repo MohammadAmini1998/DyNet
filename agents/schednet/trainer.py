@@ -1,6 +1,6 @@
 from __future__ import print_function, division, absolute_import
 import math 
-
+import itertools
 import numpy as np
 from agents.schednet.agent import PredatorAgent
 from agents.simple_agent import RandomAgent
@@ -10,6 +10,7 @@ import config
 from envs.gui import canvas
 from torch.utils.tensorboard import SummaryWriter
 import tensorflow as tf
+import random
 
 FLAGS = config.flags.FLAGS
 logger = logging.getLogger('Agent')
@@ -56,8 +57,25 @@ class Trainer(object):
             self.canvas = canvas.Canvas(self._n_predator, 1, FLAGS.map_size)
             self.canvas.setup()
     # Main function of the algorithm. 
-    def learn(self):
+    def generate_action_space(self):
+        values = [0, 1, 2, 3]
+        action_space = []
 
+        # Generate all possible combinations of values
+        combinations = list(itertools.product(values, repeat=4))
+
+        # Filter combinations where the sum of each element is not above 3
+        valid_combinations = [combo for combo in combinations if sum(combo) <= 3]
+
+        # Convert combinations to action vectors
+        for combo in valid_combinations:
+            if sum(combo) == 3:
+                action_space.append(list(combo))
+
+        return action_space
+
+    def learn(self):
+        action_space=self.generate_action_space()
         global_step = 0
         episode_num = 0
         print_flag = True
@@ -79,7 +97,7 @@ class Trainer(object):
                 global_step += 1
                 step_in_ep += 1
 
-                schedule_n, priority,priority1 = self.get_schedule(obs_n, global_step, FLAGS.sched)
+                schedule_n, priority,priority1 = self.get_schedule(obs_n, global_step,action_space, FLAGS.sched)
                 action_n = self.get_action(obs_n, schedule_n, global_step)
                 obs_n_without_schedule, reward_n, done_n, info_n = self._env.step(action_n)
                 obs_n_next, state_next, h_schedule_n = self.get_obs_state_with_schedule(obs_n_without_schedule, info_n, h_schedule_n, schedule_n)
@@ -124,7 +142,7 @@ class Trainer(object):
         self.epsilon = max(self.epsilon - epsilon_dec, epsilon_min)
 
         # Action of predator
-        if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step or np.random.rand() < self.epsilon):  # with prob. epsilon
+        if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step):  # with prob. epsilon
             # Exploration
             predator_action = self._predator_agent.explore()
         else:
@@ -141,29 +159,36 @@ class Trainer(object):
 
         return np.array(act_n, dtype=np.int32)
 
-    def get_schedule(self, obs_n, global_step, type, train=True):
+    def get_schedule(self, obs_n, global_step,action_space, type, train=True):
 
         predator_obs = [obs_n[i] for i in self._agent_profile['predator']['idx']]
 
-        if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step or np.random.rand() < self.epsilon):
+        if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step):
             # Exploration: Schedule k random agent
             priority = np.random.rand(self._n_predator)
             priority1 = np.random.rand(self._n_predator)
-            sorted_agents = np.argsort(-priority1)
-            allocation = np.zeros(4)
-            remaining_bandwidth = FLAGS.capa
-            softmax_weights = np.exp(priority1) / np.sum(np.exp(priority1))
+            # sorted_agents = np.argsort(-priority1)
+            # allocation = np.zeros(4)
+            # remaining_bandwidth = FLAGS.capa
+            # softmax_weights = np.exp(priority1) / np.sum(np.exp(priority1))
 
     # Allocate bandwidth to agents starting from the largest priority1 values
-            while remaining_bandwidth>0:
-                for agent in sorted_agents:
-                        agent_allocation = np.ceil((softmax_weights[agent]*remaining_bandwidth))
-                        allocation[agent] = agent_allocation
-                        remaining_bandwidth -= agent_allocation
-            return allocation,priority,priority1
+            # while remaining_bandwidth>0:
+            #     for agent in sorted_agents:
+            #             agent_allocation = np.ceil((softmax_weights[agent]*remaining_bandwidth))
+            #             allocation[agent] = agent_allocation
+            #             remaining_bandwidth -= agent_allocation
+            action = np.random.randint(0, 20)
+            
+            
+            c_new=action_space[action]
+            
+            
+            
+            return c_new,priority,priority1
         else:
             # Exploitation
-            return self._predator_agent.schedule(predator_obs,FLAGS.capa)
+            return self._predator_agent.schedule(predator_obs,FLAGS.capa,self.epsilon,action_space)
 
     def train_agents(self, state, obs_n, action_n, reward_n, state_next, obs_n_next, schedule_n, priority,priority1, done):
         
@@ -212,7 +237,7 @@ class Trainer(object):
     #The update_h_schedule() method takes as input the current communication schedule history (h_schedule) 
     # and the communication schedule for the current step (schedule_n).
     def update_h_schedule(self, h_schedule, schedule_n):
-
+        schedule_n=np.array(schedule_n)
         ret = h_schedule * 0.5 + schedule_n * 0.5
         return ret
 
@@ -230,7 +255,7 @@ class Trainer(object):
         return np.array(check_list)
     
     def test(self, curr_ep=None):
-
+        action_space=self.generate_action_space()
         global_step = 0
         episode_num = 0
 
@@ -250,8 +275,7 @@ class Trainer(object):
 
                 global_step += 1
                 step_in_ep += 1
-
-                schedule_n, priority,priority1 = self.get_schedule(obs_n, global_step, FLAGS.sched)
+                schedule_n, priority,priority1 = self.get_schedule(obs_n, global_step,action_space, FLAGS.sched)
                 action_n = self.get_action(obs_n, schedule_n, global_step, False)
                 obs_n_without_schedule, reward_n, done_n, info_n = self._env.step(action_n)
                 obs_n_next, state_next, h_schedule_n = self.get_obs_state_with_schedule(obs_n_without_schedule, info_n, h_schedule_n, schedule_n)

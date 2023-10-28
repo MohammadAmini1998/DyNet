@@ -112,7 +112,7 @@ class ActionSelectorNetwork:
         #                                 self.schedule_ph: schedule_ph,
         #                                 self.is_training_ph: False}))
         
-        # print( self.sess.run(self.num,
+        # print( self.sess.run(self.message,
         #                      feed_dict={self.state_ph: state_ph,
         #                                 self.schedule_ph: schedule_ph,
         #                                 self.is_training_ph: False}))
