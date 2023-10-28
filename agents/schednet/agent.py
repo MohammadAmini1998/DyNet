@@ -165,6 +165,21 @@ class PredatorAgent(object):
         
         obs_list=np.concatenate(obs_list).reshape(1, self._obs_dim)
         priority1 = self.weight_generator1.schedule_for_obs(obs_list, priority.reshape(1,self._n_agent))
+        noise = np.random.normal(loc=0, scale=0.05, size=priority.shape)
+        noise1 = np.random.normal(loc=0, scale=0.05, size=priority1.shape)
+
+        # Add noise to priority and priority1
+        priority_with_noise = priority + noise
+        priority1_with_noise = priority1 + noise1
+
+        # Clip values in priority and priority1
+        priority_with_noise = np.clip(priority_with_noise, 0, 1)
+        priority1_with_noise = np.clip(priority1_with_noise, 0, 1)
+
+        # Update priority and priority1 with the clipped versions
+        priority = priority_with_noise
+        priority1 = priority1_with_noise
+
 
         # Sort the agents based on priority1 in descending order
         softmax_weights = np.exp(priority1) / np.sum(np.exp(priority1))

@@ -124,7 +124,7 @@ class Trainer(object):
         self.epsilon = max(self.epsilon - epsilon_dec, epsilon_min)
 
         # Action of predator
-        if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step or np.random.rand() < self.epsilon):  # with prob. epsilon
+        if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step):  # with prob. epsilon
             # Exploration
             predator_action = self._predator_agent.explore()
         else:
@@ -145,7 +145,7 @@ class Trainer(object):
 
         predator_obs = [obs_n[i] for i in self._agent_profile['predator']['idx']]
 
-        if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step or np.random.rand() < self.epsilon):
+        if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step):
             # Exploration: Schedule k random agent
             priority = np.random.rand(self._n_predator)
             priority1 = np.random.rand(self._n_predator)
