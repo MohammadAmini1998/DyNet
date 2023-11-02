@@ -17,7 +17,7 @@ h3_critic = h_critic  # hidden layer 3 size for the critic
 
 # Learning rates: 
 lr_actor = 0.00001   # learning rate for the actor
-lr_critic = 0.0001  # learning rate for the critic
+lr_critic = 0.00001  # learning rate for the critic
 lr_decay = 1  # learning rate decay (per episode)
 
 # The soft target update rate. 
@@ -30,19 +30,19 @@ class Scheduler:
 
         self.sess = sess
         self.n_agent = n_agent
-        self.state_dim = n_agent
+        self.state_dim = 8
         self.action_dim=20
-
+        
         if nn_id == None:
             scope = 'critic1'
         else:
             scope = 'critic_1' + str(nn_id)
 
         # placeholders
-        self.state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, self.state_dim])
+        self.state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, 8])
         self.reward_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None])
-        self.next_state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, self.state_dim])
-        
+        self.next_state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, 8])
+        self.action_ph=tf.compat.v1.placeholder(dtype=tf.int32, shape=[None, 1])
         self.is_not_terminal_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None])  # indicators (go into target computation)
         self.is_training_ph = tf.compat.v1.placeholder(dtype=tf.bool, shape=())  # for dropout
         # The placeholders self.priority_ph and self.next_priority_ph are used to hold the priority
@@ -59,24 +59,27 @@ class Scheduler:
         # slow_q_values[0] represents the Q-values predicted by the slow target critic network, while slow_q_values[1]
         # represents the scheduled Q-values predicted by the slow target network.
         with tf.compat.v1.variable_scope('slow_target_1'+scope):
-            slow_q_values = self.generate_critic_network(self.state_ph,self.action_dim, trainable=False)
+            slow_q_values = self.generate_critic_network(self.next_state_ph,self.action_dim, trainable=False)
 
             #  This line applies the tf.stop_gradient
             #  function to the Q-values obtained from the slow
             #  target critic network. It prevents the gradients
-            #  from flowing through these Q-values during backpropagation,
+            #  from flowing throughthese Q-values during backpropagation,
             #  effectively treating them as constant values. These Q-values are stored in the attribute self.slow_q_values.
-            self.slow_q_values = slow_q_values
+            self.slow_q_values = tf.stop_gradient(slow_q_values[0])
+            self.max_q_value = tf.reduce_max(self.slow_q_values)
           
 
         # One step TD targets y_i for (s,a) from experience replay
         # = r_i + gamma*Q_slow(s',mu_slow(s')) if s' is not terminal
         # = r_i if s' terminal
-        targets = tf.expand_dims(self.reward_ph, 1) + tf.expand_dims(self.is_not_terminal_ph, 1) * .9 * self.slow_q_values
+        self.selected_q_values = tf.gather(self.q_values, self.action_ph, axis=1)
+
+        targets = tf.expand_dims(self.reward_ph, 1) + tf.expand_dims(self.is_not_terminal_ph, 1) * .90 * self.max_q_value
 
 
         # 1-step temporal difference errors
-        self.td_errors = targets - self.q_values
+        self.td_errors = targets - self.selected_q_values
 
        # compute critic gradients
         optimizer = tf.compat.v1.train.AdamOptimizer(lr_critic * lr_decay)
@@ -96,7 +99,7 @@ class Scheduler:
 
     def generate_critic_network(self, s,action_dim, trainable):
         state_action = s
-
+        
         hidden = tf.keras.layers.Dense(h1_critic, activation=tf.nn.relu,
                                  kernel_initializer=tf.random_normal_initializer(0., .1),
                                  bias_initializer=tf.constant_initializer(0.1),  
@@ -120,10 +123,11 @@ class Scheduler:
     
         return q_values
 
-    def training_critic(self, state_ph, reward_ph, next_state_ph, is_not_terminal_ph):
+    def training_critic(self,action_ph, state_ph, reward_ph, next_state_ph, is_not_terminal_ph):
 
         return self.sess.run([self.td_errors, self.critic_train_op],
-                             feed_dict={self.state_ph: state_ph,
+                             feed_dict={self.action_ph:action_ph,
+                                        self.state_ph: state_ph,
                                         self.reward_ph: reward_ph,
                                         self.next_state_ph: next_state_ph,
                                         self.is_not_terminal_ph: is_not_terminal_ph,
@@ -134,7 +138,7 @@ class Scheduler:
                              feed_dict={self.is_training_ph: False})
     
     def get_com_action(self,state_ph):
-        return self.sess.run(self.slow_q_values,
+        return self.sess.run(self.q_values,
                              feed_dict={self.state_ph: state_ph,
                                         self.is_training_ph: False})
 

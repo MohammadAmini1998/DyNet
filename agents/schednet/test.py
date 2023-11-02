@@ -18,4 +18,4 @@ def generate_action_space():
     return action_space, action_sums
 
 a, num = generate_action_space()
-print(a)
+print(a[0])

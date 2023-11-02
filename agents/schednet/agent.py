@@ -83,10 +83,10 @@ class PredatorAgent(object):
 
         return action_list
 
-    def train(self, state, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority,priority1, done):
+    def train(self, state,action, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority,priority1, done):
 
         s = state
-        
+        action=action
         o = obs_list
         a = action_list
         r = np.sum(reward_list)
@@ -96,14 +96,14 @@ class PredatorAgent(object):
         p = priority
         p1=priority1
 
-        self.store_sample(s, o, a, r, s_, o_, c, p,p1, done)
+        self.store_sample(s,action, o, a, r, s_, o_, c, p,p1, done)
         self.update_ac()
         return 0
 
-    def store_sample(self, s, o, a, r, s_, o_, c, p,p1, done):
+    def store_sample(self, s,action, o, a, r, s_, o_, c, p,p1, done):
         c_new=self.convert(c,FLAGS.capa)
 
-        self.replay_buffer.add_to_memory((s, o, a, r, s_, o_, c,c_new, p,p1, done))
+        self.replay_buffer.add_to_memory((s,action, o, a, r, s_, o_, c,c_new, p,p1, done))
         return 0
     def convert(self,c,capacity):
         result = []
@@ -122,12 +122,11 @@ class PredatorAgent(object):
             return 0
 
         minibatch = self.replay_buffer.sample_from_memory()
-        s, o, a, r, s_, o_, c,c_new, p,p1, d = map(np.array, zip(*minibatch))
-
+        s,action, o, a, r, s_, o_, c,c_new, p,p1, d = map(np.array, zip(*minibatch))
         o = np.reshape(o, [-1, self._obs_dim])
         o_ = np.reshape(o_, [-1, self._obs_dim])
         p = np.reshape(p, [-1, self._n_agent])
-        
+        action=np.reshape(action,[-1,1])
         p_ = self.weight_generator.target_schedule_for_obs(o_)
 
         p_ = np.reshape(p_, [-1, self._n_agent])
@@ -137,7 +136,12 @@ class PredatorAgent(object):
         # msg=self.action_selector.get_messages(o,c_new)      
         # print(msg)  
         # print(c_new)
-        # state_com=tf.concat([p,p1],axis=-1)
+        scheduler_input=np.concatenate([p,p1],axis=-1)
+        scheduler_input=np.reshape(scheduler_input, [-1, 8])
+        scheduler_next_input=np.concatenate([p_,p_1],axis=-1)
+        scheduler_next_input=np.reshape(scheduler_next_input, [-1, 8])
+        
+        
         # next_state_com=tf.concat([p_,p_1],axis=-1)
 
         
@@ -159,7 +163,7 @@ class PredatorAgent(object):
         _ = self.weight_generator1.training_weight_generator(o,p , wg_grads1)
         _ = self.weight_generator1.training_target_weight_generator()
 
-        _=self.scheduler.training_critic(p1, r, p_1, d)
+        _=self.scheduler.training_critic(action,scheduler_input, r, scheduler_next_input, d)
         _ = self.scheduler.training_target_critic()
 
         return 0
@@ -170,8 +174,8 @@ class PredatorAgent(object):
         
         obs_list=np.concatenate(obs_list).reshape(1, self._obs_dim)
         priority1 = self.weight_generator1.schedule_for_obs(obs_list, priority.reshape(1,self._n_agent))
-        noise = np.random.normal(loc=0, scale=0.1, size=priority.shape)
-        noise1 = np.random.normal(loc=0, scale=0.1, size=priority1.shape)
+        noise = np.random.normal(loc=0, scale=.05, size=priority.shape)
+        noise1 = np.random.normal(loc=0, scale=.05, size=priority1.shape)
 
         # Add noise to priority and priority1
         priority_with_noise = priority + noise
@@ -191,7 +195,9 @@ class PredatorAgent(object):
             c_new=action_space[action]
       
         else:
-            bandwidth=self.scheduler.get_com_action(priority1.reshape(1,4))
+            input=np.concatenate([priority,priority1],axis=-1)
+            input=np.reshape(input,[-1,8])
+            bandwidth=self.scheduler.get_com_action(input)
             action = np.argmax(bandwidth)
             c_new=action_space[action]
 
@@ -237,7 +243,7 @@ class PredatorAgent(object):
                             
         # ret = np.zeros(self._n_agent)
         # ret[schedule_idx] = 1.0
-        return c_new, priority, priority1
+        return c_new,action, priority, priority1
 
     def explore(self):
         return [random.randrange(self._action_dim_per_unit)
