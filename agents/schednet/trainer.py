@@ -69,11 +69,20 @@ class Trainer(object):
 
         # Convert combinations to action vectors
         for combo in valid_combinations:
-            if sum(combo) == 3:
-                action_space.append(list(combo))
+            action_space.append(list(combo))
 
         return action_space
-
+    def convert(self,c,capacity):
+        result = []
+        for num in c:
+            num=int(num)
+            if num == 0:
+                result.extend([False] * capacity)
+            else:
+                result.extend([True] * min(num, capacity))
+                result.extend([False] * (capacity - num))
+        return result
+    
     def learn(self):
         action_space=self.generate_action_space()
         global_step = 0
@@ -98,14 +107,14 @@ class Trainer(object):
                 step_in_ep += 1
 
                 schedule_n,action, priority,priority1 = self.get_schedule(obs_n, global_step,action_space, FLAGS.sched)
-                action_n = self.get_action(obs_n, schedule_n, global_step)
+                action_n,count = self.get_action(obs_n, schedule_n, global_step)
                 obs_n_without_schedule, reward_n, done_n, info_n = self._env.step(action_n)
                 obs_n_next, state_next, h_schedule_n = self.get_obs_state_with_schedule(obs_n_without_schedule, info_n, h_schedule_n, schedule_n)
                 if FLAGS.gui:
                     self.canvas.draw(state_next * FLAGS.map_size, [0]*self._n_predator, "Train")
 
                 done_single = sum(done_n) > 0
-                self.train_agents(state,action, obs_n, action_n, reward_n, state_next, obs_n_next, schedule_n, priority,priority1, done_single)
+                self.train_agents(state,action, obs_n, action_n, reward_n, state_next, obs_n_next, schedule_n,count, priority,priority1, done_single)
                 
                 
                 obs_n = obs_n_next
@@ -145,10 +154,15 @@ class Trainer(object):
         if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step):  # with prob. epsilon
             # Exploration
             predator_action = self._predator_agent.explore()
+            c_new=self.convert(schedule_n,FLAGS.capa)
+            c_new=np.array([c_new])
+            count = np.count_nonzero(c_new)
+            count=np.array([count])
+            count=np.reshape(count,[-1,1])
         else:
             # Exploitation
             predator_obs = [obs_n[i] for i in self._agent_profile['predator']['idx']]
-            predator_action = self._predator_agent.act(predator_obs, schedule_n)
+            predator_action,count = self._predator_agent.act(predator_obs, schedule_n)
 
         for i, idx in enumerate(self._agent_profile['predator']['idx']):
             act_n[idx] = predator_action[i]
@@ -157,7 +171,7 @@ class Trainer(object):
         for i, idx in enumerate(self._agent_profile['prey']['idx']):
             act_n[idx] = self._prey_agent[i].act(None)
 
-        return np.array(act_n, dtype=np.int32)
+        return np.array(act_n, dtype=np.int32),count
 
     def get_schedule(self, obs_n, global_step,action_space, type, train=True):
 
@@ -178,7 +192,7 @@ class Trainer(object):
             #             agent_allocation = np.ceil((softmax_weights[agent]*remaining_bandwidth))
             #             allocation[agent] = agent_allocation
             #             remaining_bandwidth -= agent_allocation
-            action = np.random.randint(0, 20)
+            action = np.random.randint(0, 35)
             
             
             c_new=action_space[action]
@@ -190,14 +204,14 @@ class Trainer(object):
             # Exploitation
             return self._predator_agent.schedule(predator_obs,FLAGS.capa,self.epsilon,action_space)
 
-    def train_agents(self, state,action, obs_n, action_n, reward_n, state_next, obs_n_next, schedule_n, priority,priority1, done):
+    def train_agents(self, state,action, obs_n, action_n, reward_n, state_next, obs_n_next, schedule_n,count, priority,priority1, done):
         
         predator_obs = [obs_n[i] for i in self._agent_profile['predator']['idx']]
         predator_action = [action_n[i] for i in self._agent_profile['predator']['idx']]
         predator_reward = [reward_n[i] for i in self._agent_profile['predator']['idx']]
         predator_obs_next = [obs_n_next[i] for i in self._agent_profile['predator']['idx']]
         self._predator_agent.train(state,action, predator_obs, predator_action, predator_reward,
-                                   state_next, predator_obs_next, schedule_n, priority,priority1, done)
+                                   state_next, predator_obs_next, schedule_n,count, priority,priority1, done)
     #  The method concatenates the observations of the predator agents with the
     #  communication schedule history and returns the modified observation and state arrays.
     def get_h_obs_state(self, obs_n, state, h_schedule):
@@ -276,7 +290,7 @@ class Trainer(object):
                 global_step += 1
                 step_in_ep += 1
                 schedule_n,action, priority,priority1 = self.get_schedule(obs_n, global_step,action_space, FLAGS.sched)
-                action_n = self.get_action(obs_n, schedule_n, global_step, False)
+                action_n,count = self.get_action(obs_n, schedule_n, global_step, False)
                 obs_n_without_schedule, reward_n, done_n, info_n = self._env.step(action_n)
                 obs_n_next, state_next, h_schedule_n = self.get_obs_state_with_schedule(obs_n_without_schedule, info_n, h_schedule_n, schedule_n)
 

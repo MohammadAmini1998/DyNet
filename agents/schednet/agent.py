@@ -71,8 +71,11 @@ class PredatorAgent(object):
     def act(self, obs_list, schedule_list):
         c_new=self.convert(schedule_list,FLAGS.capa)
         c_new=np.array([c_new])
+        count = np.count_nonzero(c_new)
+        count=np.array([count])
+        count=np.reshape(count,[-1,1])
         action_prob_list = self.action_selector.action_for_state(np.concatenate(obs_list)
-                                                                   .reshape(1, self._obs_dim),c_new)
+                                                                   .reshape(1, self._obs_dim),c_new,count)
 
         if np.isnan(action_prob_list).any():
             raise ValueError('action_prob contains NaN')
@@ -81,12 +84,13 @@ class PredatorAgent(object):
         for action_prob in action_prob_list.reshape(self._n_agent, self._action_dim_per_unit):
             action_list.append(np.random.choice(len(action_prob), p=action_prob))
 
-        return action_list
+        return action_list,count
 
-    def train(self, state,action, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority,priority1, done):
+    def train(self, state,action, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n,count, priority,priority1, done):
 
         s = state
         action=action
+        count=count
         o = obs_list
         a = action_list
         r = np.sum(reward_list)
@@ -96,14 +100,14 @@ class PredatorAgent(object):
         p = priority
         p1=priority1
 
-        self.store_sample(s,action, o, a, r, s_, o_, c, p,p1, done)
+        self.store_sample(s,action, o, a, r, s_, o_, c,count, p,p1, done)
         self.update_ac()
         return 0
 
-    def store_sample(self, s,action, o, a, r, s_, o_, c, p,p1, done):
+    def store_sample(self, s,action, o, a, r, s_, o_, c,count, p,p1, done):
         c_new=self.convert(c,FLAGS.capa)
 
-        self.replay_buffer.add_to_memory((s,action, o, a, r, s_, o_, c,c_new, p,p1, done))
+        self.replay_buffer.add_to_memory((s,action, o, a, r, s_, o_, c,c_new,count, p,p1, done))
         return 0
     def convert(self,c,capacity):
         result = []
@@ -122,11 +126,13 @@ class PredatorAgent(object):
             return 0
 
         minibatch = self.replay_buffer.sample_from_memory()
-        s,action, o, a, r, s_, o_, c,c_new, p,p1, d = map(np.array, zip(*minibatch))
+        s,action, o, a, r, s_, o_, c,c_new,count, p,p1, d = map(np.array, zip(*minibatch))
         o = np.reshape(o, [-1, self._obs_dim])
         o_ = np.reshape(o_, [-1, self._obs_dim])
         p = np.reshape(p, [-1, self._n_agent])
         action=np.reshape(action,[-1,1])
+        count=np.reshape(count,[-1,1])
+
         p_ = self.weight_generator.target_schedule_for_obs(o_)
 
         p_ = np.reshape(p_, [-1, self._n_agent])
@@ -149,7 +155,7 @@ class PredatorAgent(object):
         td_error, _ = self.critic.training_critic(o, r, o_, p, p_,p1,p_1, d)  # train critic'
         
         
-        _ = self.action_selector.training_actor(o, a, c_new, td_error)  # train actor
+        _ = self.action_selector.training_actor(o, a, c_new,count, td_error)  # train actor
 
         wg_grads = self.critic.grads_for_scheduler(o, p)
 
@@ -191,7 +197,7 @@ class PredatorAgent(object):
 
         if np.random.rand()<epsilon:
 
-            action = np.random.randint(0, 20)
+            action = np.random.randint(0, 35)
             c_new=action_space[action]
       
         else:
@@ -200,7 +206,6 @@ class PredatorAgent(object):
             bandwidth=self.scheduler.get_com_action(input)
             action = np.argmax(bandwidth)
             c_new=action_space[action]
-
 
 
         

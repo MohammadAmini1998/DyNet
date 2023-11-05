@@ -15,7 +15,7 @@ FLAGS = config.flags.FLAGS
 # of all predator agents and the communication schedule for the current step and generates a concatenated 
 # communication message for all predator agents using the decode_concat_network() function.
 
-def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, trainable=True, share=False, schedule=None):
+def generate_comm_network(count,obs_list, obs_dim_per_unit, action_dim, n_agent, trainable=True, share=False, schedule=None):
     actions = list()
     h_num = 32
 
@@ -41,12 +41,12 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
         for i in range(n_agent):
             aggr_scope = "aggr" + str(i)
             with tf.compat.v1.variable_scope(aggr_scope):
-                aggr_out,schedule,inp = decode_concat_network(encoder_list, schedule, capacity, decoder_out_dim)
+                aggr_out,schedule,inp = decode_concat_network(count,encoder_list, schedule, capacity, decoder_out_dim)
                 aggr_list.append(aggr_out)
 
     else:
         with tf.variable_scope(aggr_scope):
-            aggr_out,schedule = decode_concat_network(encoder_list, schedule, capacity, decoder_out_dim)
+            aggr_out,schedule = decode_concat_network(count,encoder_list, schedule, capacity, decoder_out_dim)
         for i in range(n_agent):
             aggr_list.append(aggr_out)
 
@@ -131,7 +131,8 @@ def encoder_network(e_input, out_dim, h_num, h_level, name="encoder", trainable=
 
 # For example, if the masked communication messages tensor is [2, 3, 4, 6, 8, 9], the reshaped tensor will be [[2, 3, 4, 6, 8, 9]], because there is only one example in the batch. The first two elements of the tensor correspond to the communication message from the second predator agent, the next two elements correspond to the communication message from the third predator agent, and the final two elements correspond to the communication message from the sixth predator agent.
 # The decode_concat_network() function returns the reshaped tensor, which can then be used as input to the comm_encoded_obs() function to generate a probability distribution over the possible communication actions, as I explained in my previous response.
-def decode_concat_network(m_input_list, schedule, capacity, out_dim):
+@tf.function
+def decode_concat_network(count, m_input_list, schedule, capacity, out_dim):
     inp = tf.stack(m_input_list, axis=-2)
     flattened_schedule = tf.reshape(schedule, [-1])  # Flatten the schedule tensor
 
@@ -142,9 +143,22 @@ def decode_concat_network(m_input_list, schedule, capacity, out_dim):
 
     masked_msg = tf.boolean_mask(flattened_inp, mask)  # Apply the mask element-wise
 
-    x = tf.reshape(masked_msg, [-1, capacity], name='scheduled')
+    padded = tf.TensorArray(tf.float32, size=len(count), dynamic_size=True)  # Use tf.TensorArray instead of Python list
 
-    return x, schedule,inp
+    a = 0
+    for i in range(len(count)):
+        # j = tf.squeeze(count[i])
+        j=count[i][0]
+        zeros = capacity - j
+        zeros = tf.zeros(shape=(zeros), dtype=tf.float32)
 
+        values = masked_msg[a:a + j]
+        array = tf.concat([values, zeros], axis=0)
+        padded = padded.write(i, array)  # Write to the TensorArray instead of appending to Python list
+        a += j
 
+    padded = padded.stack()  # Convert TensorArray to a stacked tensor
 
+    x = tf.reshape(padded, [-1, capacity], name='scheduled')
+
+    return x, schedule, inp

@@ -10,7 +10,7 @@ def generate_action_space():
     valid_combinations = [combo for combo in combinations if sum(combo) <= 3]
 
     for combo in valid_combinations:
-        if sum(combo) == 3:
+
             
             action_space.append(list(combo))
             action_sums.append(sum(combo))
@@ -18,4 +18,5 @@ def generate_action_space():
     return action_space, action_sums
 
 a, num = generate_action_space()
-print(a[0])
+print(len(a[1:]))
+print(a[1:])

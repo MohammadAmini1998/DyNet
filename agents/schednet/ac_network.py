@@ -37,7 +37,6 @@ class ActionSelectorNetwork:
         self.n_agent = n_agent
         self.obs_dim_per_unit = obs_dim_per_unit
         self.action_dim = action_dim
-
         if nn_id == None: # An optional identifier to distinguish different instances of the actor network.
             scope = 'actor'
         else:
@@ -46,6 +45,7 @@ class ActionSelectorNetwork:
         # placeholders
         self.state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, obs_dim_per_unit*n_agent])
         self.next_state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, obs_dim_per_unit*n_agent])
+        self.count_ph=tf.compat.v1.placeholder(dtype=tf.int32, shape=[None, 1])
         # Concat action space
         self.action_ph = tf.compat.v1.placeholder(dtype=tf.int32, shape=[None, n_agent])
         self.schedule_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, self.n_agent * FLAGS.capa])
@@ -65,7 +65,7 @@ class ActionSelectorNetwork:
         #  The state_ph and schedule_ph are passed as inputs to the method. The trainable parameter is set to True, indicating that the weights of the actor network should be updated during training.
         #  The resulting actions are stored in the self.actions attribute.
         with tf.compat.v1.variable_scope(scope):
-            self.actions,self.message,self.schedule,self.num = self.generate_actor_network(self.state_ph, self.schedule_ph, trainable=True)
+            self.actions,self.message,self.schedule,self.num = self.generate_actor_network(self.state_ph, self.schedule_ph,self.count_ph, trainable=True)
 
         # Actor loss function (mean Q-values under current policy with regularization)
         self.actor_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=scope)
@@ -82,13 +82,13 @@ class ActionSelectorNetwork:
     # method prepares the observations for each agent, passes them to
     # comm.generate_comm_network, and returns the output of the actor network
 
-    def generate_actor_network(self, obs, schedule, trainable, share=False):
+    def generate_actor_network(self, obs, schedule,count, trainable, share=False):
 
         obs_list = list()
         for i in range(self.n_agent):
             obs_list.append(obs[:, i * self.obs_dim_per_unit:(i + 1) * self.obs_dim_per_unit])
 
-        ret = comm.generate_comm_network(obs_list, self.obs_dim_per_unit, self.action_dim, self.n_agent, schedule=schedule)
+        ret = comm.generate_comm_network(count,obs_list, self.obs_dim_per_unit, self.action_dim, self.n_agent, schedule=schedule)
         # ret is the output of the actor network
         return ret
 
@@ -100,26 +100,37 @@ class ActionSelectorNetwork:
     #  The method returns the calculated actions.
     def get_messages(self,state_ph,schedule_ph):
 
-        return (self.sess.run(self.message,
+        return (self.sess.run(self.num,
                              feed_dict={self.state_ph: state_ph,
                                         self.schedule_ph: schedule_ph,
                                         self.is_training_ph: False}))
 
-    def action_for_state(self, state_ph, schedule_ph):
-
-        # print( self.sess.run(self.schedule,
-        #                      feed_dict={self.state_ph: state_ph,
-        #                                 self.schedule_ph: schedule_ph,
-        #                                 self.is_training_ph: False}))
-        
+    def action_for_state(self, state_ph, schedule_ph,count_ph):
         # print( self.sess.run(self.message,
         #                      feed_dict={self.state_ph: state_ph,
         #                                 self.schedule_ph: schedule_ph,
+        #                                 self.count_ph:count_ph,
+        #                                 self.is_training_ph: False}))
+        # print( self.sess.run(self.num,
+        #                      feed_dict={self.state_ph: state_ph,
+        #                                 self.schedule_ph: schedule_ph,
+        #                                 self.count_ph:count_ph,
+        #                                 self.is_training_ph: False}))
+
+        
+        # print( self.sess.run(self.schedule,
+        #                      feed_dict={self.state_ph: state_ph,
+        #                                 self.schedule_ph: schedule_ph,
+        #                                 self.count_ph:count_ph,
         #                                 self.is_training_ph: False}))
         
+        
+   
+       
         return self.sess.run(self.actions,
                              feed_dict={self.state_ph: state_ph,
                                         self.schedule_ph: schedule_ph,
+                                        self.count_ph:count_ph,
                                         self.is_training_ph: False})
 
     #  This method performs an actor training step.
@@ -130,14 +141,16 @@ class ActionSelectorNetwork:
     #  schedule_ph, td_errors, and self.is_training_ph are fed into the computation graph during execution.
     #  The method does not return any value.
 
-    def training_actor(self, state_ph, action_ph, schedule_ph, td_errors):
-       
+    def training_actor(self, state_ph, action_ph, schedule_ph,count_ph, td_errors):
+   
         return self.sess.run(self.actor_train_op,
                              feed_dict={self.state_ph: state_ph,
                                         self.action_ph: action_ph,
                                         self.schedule_ph: schedule_ph,
+                                        self.count_ph:count_ph,
                                         self.td_errors: td_errors,
                                         self.is_training_ph: True})
+  
 
 
 class CriticNetwork:
