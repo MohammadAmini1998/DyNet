@@ -100,6 +100,7 @@ class Trainer(object):
            
 
             total_reward = 0
+            total_count=0
             done = False
 
             while not done:
@@ -120,6 +121,7 @@ class Trainer(object):
                 obs_n = obs_n_next
                 state = state_next
                 total_reward += np.sum(reward_n)
+                total_count+=count
 
 
                 if global_step%10000==0:
@@ -137,6 +139,7 @@ class Trainer(object):
         
                     tf.summary.scalar("Reward in each episode", total_reward, step=global_step)
                     tf.summary.scalar("Total step in each episode", step_in_ep, step=global_step)
+                    tf.summary.scalar("Total Communication in each episode", total_count[0][0], step=global_step)
 
                 if FLAGS.eval_on_train and global_step % FLAGS.eval_step == 0:
                     self.test(global_step)
@@ -154,6 +157,7 @@ class Trainer(object):
         if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step):  # with prob. epsilon
             # Exploration
             predator_action = self._predator_agent.explore()
+            
             c_new=self.convert(schedule_n,FLAGS.capa)
             c_new=np.array([c_new])
             count = np.count_nonzero(c_new)
@@ -163,6 +167,7 @@ class Trainer(object):
             # Exploitation
             predator_obs = [obs_n[i] for i in self._agent_profile['predator']['idx']]
             predator_action,count = self._predator_agent.act(predator_obs, schedule_n)
+
 
         for i, idx in enumerate(self._agent_profile['predator']['idx']):
             act_n[idx] = predator_action[i]

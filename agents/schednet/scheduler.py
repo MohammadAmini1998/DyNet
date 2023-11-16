@@ -42,9 +42,11 @@ class Scheduler:
         self.state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, 8])
         self.reward_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None])
         self.next_state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, 8])
+        self.count_ph=tf.compat.v1.placeholder(dtype=tf.float32, shape=[None,1])
         self.action_ph=tf.compat.v1.placeholder(dtype=tf.int32, shape=[None, 1])
         self.is_not_terminal_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None])  # indicators (go into target computation)
         self.is_training_ph = tf.compat.v1.placeholder(dtype=tf.bool, shape=())  # for dropout
+        
         # The placeholders self.priority_ph and self.next_priority_ph are used to hold the priority
         # values associated with the experiences in prioritized experience replay.
         # In reinforcement learning, prioritized experience replay is a technique that
@@ -75,7 +77,7 @@ class Scheduler:
         # = r_i if s' terminal
         self.selected_q_values = tf.gather(self.q_values, self.action_ph, axis=1)
 
-        targets = tf.expand_dims(self.reward_ph, 1) + tf.expand_dims(self.is_not_terminal_ph, 1) * .90 * self.max_q_value
+        targets = tf.expand_dims(self.reward_ph, 1) + -tf.expand_dims(self.count_ph,1)*.01+ tf.expand_dims(self.is_not_terminal_ph, 1) * .90 * self.max_q_value
 
 
         # 1-step temporal difference errors
@@ -123,7 +125,7 @@ class Scheduler:
     
         return q_values
 
-    def training_critic(self,action_ph, state_ph, reward_ph, next_state_ph, is_not_terminal_ph):
+    def training_critic(self,action_ph, state_ph, reward_ph, next_state_ph, is_not_terminal_ph,count_ph):
 
         return self.sess.run([self.td_errors, self.critic_train_op],
                              feed_dict={self.action_ph:action_ph,
@@ -131,6 +133,7 @@ class Scheduler:
                                         self.reward_ph: reward_ph,
                                         self.next_state_ph: next_state_ph,
                                         self.is_not_terminal_ph: is_not_terminal_ph,
+                                        self.count_ph:count_ph,
                                         self.is_training_ph: True})
 
     def training_target_critic(self):

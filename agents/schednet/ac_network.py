@@ -49,6 +49,7 @@ class ActionSelectorNetwork:
         # Concat action space
         self.action_ph = tf.compat.v1.placeholder(dtype=tf.int32, shape=[None, n_agent])
         self.schedule_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, self.n_agent * FLAGS.capa])
+        
 
         # It is reshaped using tf.reshape and transformed into a one-hot encoding using tf.one_hot.
         # It has a shape of [-1, action_dim * n_agent], where -1 implies that the first dimension is automatically inferred

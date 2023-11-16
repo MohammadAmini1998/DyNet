@@ -1,22 +1,11 @@
-import itertools
+import random
 import numpy as np
 
-def generate_action_space():
-    values = [0, 1, 2, 3]
-    action_space = []
-    action_sums = []
+def generate_random_numbers(n):
+    return np.array([random.random() for _ in range(n)])
 
-    combinations = list(itertools.product(values, repeat=4))
-    valid_combinations = [combo for combo in combinations if sum(combo) <= 3]
+# Example usage
+n = 10
 
-    for combo in valid_combinations:
-
-            
-            action_space.append(list(combo))
-            action_sums.append(sum(combo))
-
-    return action_space, action_sums
-
-a, num = generate_action_space()
-print(len(a[1:]))
-print(a[1:])
+random_array = generate_random_numbers(n)
+print(random_array)

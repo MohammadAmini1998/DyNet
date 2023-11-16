@@ -7,6 +7,10 @@ import tensorflow as tf
 import math 
 from agents.schednet.replay_buffer import ReplayBuffer
 from agents.schednet.ac_network import ActionSelectorNetwork
+from agents.schednet.ObsScheduler import ObservationCriticNetwork
+from agents.schednet.ObsScheduler import ObservationSelectNetwork
+
+
 from agents.schednet.ac_network import CriticNetwork
 from agents.schednet.sched_network import WeightGeneratorNetwork
 from agents.schednet.bit_network import WeightGeneratorNetwork1
@@ -47,6 +51,8 @@ class PredatorAgent(object):
 
             self.weight_generator1 = WeightGeneratorNetwork1(self.sess, self._n_agent, self._obs_dim)
             self.critic = CriticNetwork(self.sess, self._n_agent, self._state_dim, self._name)
+            # self.obs_weight_generator=ObservationSelectNetwork(self.sess, self._n_agent, self._obs_dim, self._name)
+            # self.obs_critic=ObservationCriticNetwork(self.sess, self._n_agent, self._state_dim, self._name)
             self.scheduler=Scheduler(self.sess, self._n_agent,  self._n_agent, self._name)
             tf.compat.v1.global_variables_initializer().run(session=self.sess)
             self.saver = tf.compat.v1.train.Saver()
@@ -76,6 +82,8 @@ class PredatorAgent(object):
         count=np.reshape(count,[-1,1])
         action_prob_list = self.action_selector.action_for_state(np.concatenate(obs_list)
                                                                    .reshape(1, self._obs_dim),c_new,count)
+        
+        # obs_weights=self.obs_weight_generator.action_for_state(np.concatenate(obs_list))
 
         if np.isnan(action_prob_list).any():
             raise ValueError('action_prob contains NaN')
@@ -127,12 +135,12 @@ class PredatorAgent(object):
 
         minibatch = self.replay_buffer.sample_from_memory()
         s,action, o, a, r, s_, o_, c,c_new,count, p,p1, d = map(np.array, zip(*minibatch))
+        # obs_weights=np.reshape(obs_weights,[-1,self._obs_dim])
         o = np.reshape(o, [-1, self._obs_dim])
         o_ = np.reshape(o_, [-1, self._obs_dim])
         p = np.reshape(p, [-1, self._n_agent])
         action=np.reshape(action,[-1,1])
         count=np.reshape(count,[-1,1])
-
         p_ = self.weight_generator.target_schedule_for_obs(o_)
 
         p_ = np.reshape(p_, [-1, self._n_agent])
@@ -153,6 +161,8 @@ class PredatorAgent(object):
         
     
         td_error, _ = self.critic.training_critic(o, r, o_, p, p_,p1,p_1, d)  # train critic'
+        # td_errors,_=self.obs_critic.training_critic(o,r,o_,d)
+        # _=self.obs_weight_generator(o,obs_weights,td_errors)
         
         
         _ = self.action_selector.training_actor(o, a, c_new,count, td_error)  # train actor
@@ -169,7 +179,7 @@ class PredatorAgent(object):
         _ = self.weight_generator1.training_weight_generator(o,p , wg_grads1)
         _ = self.weight_generator1.training_target_weight_generator()
 
-        _=self.scheduler.training_critic(action,scheduler_input, r, scheduler_next_input, d)
+        _=self.scheduler.training_critic(action,scheduler_input, r, scheduler_next_input, d,count)
         _ = self.scheduler.training_target_critic()
 
         return 0
@@ -207,52 +217,14 @@ class PredatorAgent(object):
             action = np.argmax(bandwidth)
             c_new=action_space[action]
 
-
-        
-        # print(bandwidth)
-
-        # Sort the agents based on priority1 in descending order
-    #     softmax_weights = np.exp(priority1) / np.sum(np.exp(priority1))
-    #     allocation = np.zeros(self._n_agent)
-
-    #     sorted_agents = np.argsort(-softmax_weights)
-    #     # print(priority1)
-    #     # print(sorted_agents)
-        
-    #     remaining_bandwidth = l
-    # # Allocate bandwidth to agents starting from the largest priority1 values
-    #     while remaining_bandwidth>0:
-    #         for agent in sorted_agents:
-    #                 agent_allocation = np.ceil((softmax_weights[agent]*remaining_bandwidth))
-    #                 allocation[agent] = agent_allocation
-    #                 remaining_bandwidth -= agent_allocation
-    #     # print(priority1)
-    #     # print(allocation)
-        
-
-    # Adjust the allocation to ensure the total sum is equal to l
-        # if np.sum(allocation) < l:
-        #     remaining_allocation = l - np.sum(allocation)
-        #     max_allocation_agent = np.argmax(allocation)
-        #     allocation[max_allocation_agent] += remaining_allocation
-
-        # # print(priority1)
-
-        # if FLAGS.sch_type == "top":
-        #     schedule_idx = np.argsort(-priority1)[:FLAGS.s_num]
-        # elif FLAGS.sch_type == "softmax":
-        #     sm = softmax(priority1)
-        #     schedule_idx = np.random.choice(self._n_agent, p=sm)
-        # else: # IF N_SUM == 1
-        #     schedule_idx = np.argmax(priority1)
-                            
-        # ret = np.zeros(self._n_agent)
-        # ret[schedule_idx] = 1.0
         return c_new,action, priority, priority1
 
     def explore(self):
         return [random.randrange(self._action_dim_per_unit)
                 for _ in range(self._n_agent)]
+        # return [random.randrange(self._action_dim_per_unit)
+        #         for _ in range(self._n_agent)], [random.uniform(0,1)
+        #         for _ in range(self._n_agent*7)]
 
 
 def softmax(x):
