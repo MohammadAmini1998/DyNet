@@ -44,7 +44,7 @@ class PredatorAgent(object):
             self.action_selector = ActionSelectorNetwork(self.sess, self._n_agent, self._obs_dim_per_unit, self._action_dim_per_unit, self._name)
             self.weight_generator = WeightGeneratorNetwork(self.sess, self._n_agent, self._obs_dim)
 
-            self.weight_generator1 = WeightGeneratorNetwork1(self.sess, self._n_agent, self._obs_dim)
+            # self.weight_generator1 = WeightGeneratorNetwork1(self.sess, self._n_agent, self._obs_dim)
             self.critic = CriticNetwork(self.sess, self._n_agent, self._state_dim, self._name)
 
             tf.compat.v1.global_variables_initializer().run(session=self.sess)
@@ -82,7 +82,7 @@ class PredatorAgent(object):
 
         return action_list
 
-    def train(self, state, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority,priority1, done):
+    def train(self, state, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority, done):
 
         s = state
         
@@ -93,16 +93,15 @@ class PredatorAgent(object):
         o_ = obs_next_list
         c = schedule_n
         p = priority
-        p1=priority1
 
-        self.store_sample(s, o, a, r, s_, o_, c, p,p1, done)
+        self.store_sample(s, o, a, r, s_, o_, c, p, done)
         self.update_ac()
         return 0
 
-    def store_sample(self, s, o, a, r, s_, o_, c, p,p1, done):
+    def store_sample(self, s, o, a, r, s_, o_, c, p, done):
         # print(c)
         c_new=self.convert(c,FLAGS.capa)
-        self.replay_buffer.add_to_memory((s, o, a, r, s_, o_, c,c_new, p,p1, done))
+        self.replay_buffer.add_to_memory((s, o, a, r, s_, o_, c,c_new, p, done))
         return 0
     def convert(self,c,capacity):
         result = []
@@ -121,7 +120,7 @@ class PredatorAgent(object):
             return 0
 
         minibatch = self.replay_buffer.sample_from_memory()
-        s, o, a, r, s_, o_, c,c_new, p,p1, d = map(np.array, zip(*minibatch))
+        s, o, a, r, s_, o_, c,c_new, p, d = map(np.array, zip(*minibatch))
         o = np.reshape(o, [-1, self._obs_dim])
         o_ = np.reshape(o_, [-1, self._obs_dim])
 
@@ -131,31 +130,26 @@ class PredatorAgent(object):
 
         p_ = np.reshape(p_, [-1, self._n_agent])
 
-        p_1 = self.weight_generator1.target_schedule_for_obs(o_,p_)
-
-        # msg=self.action_selector.get_messages(o,c_new)      
-        # print(msg)  
-        # print(c_new)
+  
        
 
     
         
-        td_error, _ = self.critic.training_critic(o, r, o_, p, p_,p1,p_1, d)  # train critic'
+        td_error, _ = self.critic.training_critic(o, r, o_, p, p_, d)  # train critic'
         
 
         _ = self.action_selector.training_actor(o, a, c_new, td_error)  # train actor
 
         wg_grads = self.critic.grads_for_scheduler(o, p)
 
-        wg_grads1 = self.critic.grads_for_scheduler1(o, p1)
+        # wg_grads1 = self.critic.grads_for_scheduler1(o, p1)
 
         _ = self.weight_generator.training_weight_generator(o, wg_grads)
         _ = self.critic.training_target_critic()  # train slow target critic
         _ = self.weight_generator.training_target_weight_generator()
 
 
-        _ = self.weight_generator1.training_weight_generator(o,p , wg_grads1)
-        _ = self.weight_generator1.training_target_weight_generator()
+
 
         return 0
 
@@ -164,40 +158,33 @@ class PredatorAgent(object):
                                                            .reshape(1, self._obs_dim))
         
         obs_list=np.concatenate(obs_list).reshape(1, self._obs_dim)
-        priority1 = self.weight_generator1.schedule_for_obs(obs_list, priority.reshape(1,self._n_agent))
-        noise = np.random.normal(loc=0, scale=0.05, size=priority.shape)
-        noise1 = np.random.normal(loc=0, scale=0.05, size=priority1.shape)
+        noise = np.random.normal(loc=0, scale=0.1, size=priority.shape)
 
         # Add noise to priority and priority1
         priority_with_noise = priority + noise
-        priority1_with_noise = priority1 + noise1
 
         # Clip values in priority and priority1
         priority_with_noise = np.clip(priority_with_noise, 0, 1)
-        priority1_with_noise = np.clip(priority1_with_noise, 0, 1)
+        # priority1_with_noise = np.clip(priority1_with_noise, 0, 1)
 
         # Update priority and priority1 with the clipped versions
         priority = priority_with_noise
-        priority1 = priority1_with_noise
+        # priority1 = priority1_with_noise
 
 
         # Sort the agents based on priority1 in descending order
-        softmax_weights = np.exp(priority1) / np.sum(np.exp(priority1))
+        softmax_weights = np.exp(priority) / np.sum(np.exp(priority))
         allocation = np.zeros(self._n_agent)
-
-        sorted_agents = np.argsort(-softmax_weights)
-        # print(priority1)
-        # print(sorted_agents)
-        
+        sorted_agents = np.argsort(-softmax_weights)        
         remaining_bandwidth = l
+        
     # Allocate bandwidth to agents starting from the largest priority1 values
         while remaining_bandwidth>0:
             for agent in sorted_agents:
                     agent_allocation = np.ceil((softmax_weights[agent]*remaining_bandwidth))
                     allocation[agent] = agent_allocation
                     remaining_bandwidth -= agent_allocation
-        # print(priority1)
-        # print(allocation)
+     
         
 
     # Adjust the allocation to ensure the total sum is equal to l
@@ -209,17 +196,17 @@ class PredatorAgent(object):
         # # print(priority1)
 
         if FLAGS.sch_type == "top":
-            schedule_idx = np.argsort(-priority1)[:FLAGS.s_num]
+            schedule_idx = np.argsort(-priority)[:FLAGS.s_num]
         elif FLAGS.sch_type == "softmax":
-            sm = softmax(priority1)
+            sm = softmax(priority)
             schedule_idx = np.random.choice(self._n_agent, p=sm)
         else: # IF N_SUM == 1
-            schedule_idx = np.argmax(priority1)
+            schedule_idx = np.argmax(priority)
                             
         ret = np.zeros(self._n_agent)
         ret[schedule_idx] = 1.0
 
-        return allocation, priority, priority1
+        return allocation, priority
 
     def explore(self):
         return [random.randrange(self._action_dim_per_unit)

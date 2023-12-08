@@ -20,7 +20,7 @@ def config_agent(_flags):
 
     # Network training setting
     flags.DEFINE_float("a_lr", 0.00001, "Learning rate")
-    flags.DEFINE_float("w_lr", 0.00001, "Learning rate")
+    flags.DEFINE_float("w_lr", 0.000001, "Learning rate")
     flags.DEFINE_float("c_lr", 0.0001, "Learning rate")
     flags.DEFINE_float("tau", 0.05, "Learning rate")
     flags.DEFINE_boolean("use_action_in_critic", False, "Use guided samples")
@@ -33,7 +33,7 @@ def config_agent(_flags):
     flags.DEFINE_boolean("train", True, "Training or testing")
 
     flags.DEFINE_integer("comm", 5, "Communication type")
-    flags.DEFINE_integer("capa", 3, "Capacity for comm")
+    flags.DEFINE_integer("capa", 4, "Capacity for comm")
     flags.DEFINE_boolean("e_share", False, "Share encoder")
     flags.DEFINE_boolean("s_share", False, "Share sender")
     flags.DEFINE_boolean("a_share", False, "Share aggregator")
