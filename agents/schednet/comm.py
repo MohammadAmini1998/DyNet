@@ -60,7 +60,7 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
 
         actions.append(agent_actor)
 
-    return tf.concat(actions, axis=-1)
+    return tf.concat(actions, axis=-1),aggr_out
 
 #  the function generates an actor network for each predator agent's communication action
 #  using the comm_encoded_obs() function, which takes in the observation of the predator
@@ -103,6 +103,7 @@ def comm_encoded_obs(obs, c_input, action_dim, h_num, trainable=True):
 # This is like feature extraction that maps observation into lower dimensions representations of it. 
 
 def encoder_network(e_input, out_dim, h_num, h_level, name="encoder", trainable=True):
+    threshold = 0.5
     hidden = e_input
     for i in range(h_level):
         hidden = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
@@ -110,11 +111,14 @@ def encoder_network(e_input, out_dim, h_num, h_level, name="encoder", trainable=
                                        bias_initializer=tf.constant_initializer(0.1),  # biases
                                        use_bias=True, trainable=trainable, name=name+str(i))(hidden)
 
-    ret = tf.keras.layers.Dense(units=out_dim, activation=tf.nn.relu,
+    ret = tf.keras.layers.Dense(units=out_dim, activation=tf.nn.sigmoid,
                                 kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
                                 bias_initializer=tf.constant_initializer(0.1),  # biases
                                 use_bias=True, trainable=trainable, name=name+"_out")(hidden)
-    return ret
+    binary_output = tf.cast(tf.math.greater(ret, threshold), tf.float32)
+
+    
+    return binary_output
 # Suppose we have a multi-agent predator-prey game with 3 predator agents and a communication capacity of 2. At each step of the game, each predator agent generates an observation of the game environment, which is encoded into a tensor of shape (batch_size, capacity) using the encoder_network() function.
 
 # The encoded observation tensors for the 3 predator agents are stored in a list m_input_list, which has length 3. The communication schedule tensor schedule is a binary tensor of shape (batch_size, 3), where each element indicates whether the corresponding predator agent should communicate at the current step. For example, if schedule is [1, 0, 1], this means that the first and third predator agents should communicate at the current step, while the second predator agent should not communicate.

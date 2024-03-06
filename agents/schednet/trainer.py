@@ -18,7 +18,7 @@ training_step = FLAGS.training_step
 testing_step = FLAGS.testing_step
 
 epsilon_dec = 1/training_step
-epsilon_min = 0.1
+epsilon_min = 0.01
 
 summary_writer = tf.summary.create_file_writer("logdir")
 writer = SummaryWriter()
@@ -102,7 +102,7 @@ class Trainer(object):
                         done = True
         
                     tf.summary.scalar("Reward in each episode", total_reward, step=global_step)
-                    tf.summary.scalar("Total step in each episode", step_in_ep, step=global_step)
+                    tf.summary.scalar("Total communication in each episode", step_in_ep*8, step=global_step)
 
                 if FLAGS.eval_on_train and global_step % FLAGS.eval_step == 0:
                     self.test(global_step)

@@ -19,7 +19,7 @@ h2_critic = h_critic  # hidden layer 2 size for the critic
 h3_critic = h_critic  # hidden layer 3 size for the critic
 
 # Learning rates: 
-lr_actor = 0.00001   # learning rate for the actor
+lr_actor =  0.00001   # learning rate for the actor
 lr_critic = 0.0001  # learning rate for the critic
 lr_decay = 1  # learning rate decay (per episode)
 
@@ -48,6 +48,7 @@ class ActionSelectorNetwork:
         self.next_state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, obs_dim_per_unit*n_agent])
         # Concat action space
         self.action_ph = tf.compat.v1.placeholder(dtype=tf.int32, shape=[None, n_agent])
+        self.messages_ph=tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, n_agent * 32])
         self.schedule_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, self.n_agent])
 
         # It is reshaped using tf.reshape and transformed into a one-hot encoding using tf.one_hot.
@@ -58,6 +59,7 @@ class ActionSelectorNetwork:
 
         # indicators (go into target computation). a boolean scalar indicating whether the network is in training mode (True) or not (False).
         self.is_training_ph = tf.compat.v1.placeholder(dtype=tf.bool, shape=())
+        self.global_step = tf.Variable(0, trainable=False, dtype=tf.int64, name='global_step')
 
 
         #  Action selector
@@ -65,7 +67,7 @@ class ActionSelectorNetwork:
         #  The state_ph and schedule_ph are passed as inputs to the method. The trainable parameter is set to True, indicating that the weights of the actor network should be updated during training.
         #  The resulting actions are stored in the self.actions attribute.
         with tf.compat.v1.variable_scope(scope):
-            self.actions = self.generate_actor_network(self.state_ph, self.schedule_ph, trainable=True)
+            self.actions,self.messages = self.generate_actor_network(self.state_ph, self.schedule_ph, trainable=True)
 
         # Actor loss function (mean Q-values under current policy with regularization)
         self.actor_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=scope)
@@ -74,11 +76,13 @@ class ActionSelectorNetwork:
         entropy = -tf.reduce_sum(self.actions*tf.math.log(self.actions), 1) # calculates the entropy of the actions 
         #  Computes the actor loss by multiplying the log probabilities (log_prob) with the TD errors (self.td_errors),
         #  Adding a regularization term of 0.01 * entropy, and summing them all together.
-        self.loss = tf.reduce_sum(-(tf.multiply(log_prob, self.td_errors) + 0.01*entropy)) 
+        # l2_reg = 0.01 * tf.reduce_sum([tf.nn.l2_loss(var) for var in self.actor_vars])
+        self.loss = tf.reduce_sum(-(tf.multiply(log_prob, self.td_errors)+.01 * entropy)) 
+        
 
         # This calculates the gradients of the actor loss (self.loss) with respect to the actor variables (self.actor_vars)
         var_grads = tf.gradients(self.loss, self.actor_vars)
-        self.actor_train_op = tf.compat.v1.train.AdamOptimizer(lr_actor * lr_decay).apply_gradients(zip(var_grads,self.actor_vars))
+        self.actor_train_op = tf.compat.v1.train.AdamOptimizer(lr_actor).apply_gradients(zip(var_grads,self.actor_vars))
     # method prepares the observations for each agent, passes them to
     # comm.generate_comm_network, and returns the output of the actor network
 
@@ -100,6 +104,10 @@ class ActionSelectorNetwork:
     #  The method returns the calculated actions.
 
     def action_for_state(self, state_ph, schedule_ph):
+        # print(self.sess.run(self.messages,
+        #                      feed_dict={self.state_ph: state_ph,
+        #                                 self.schedule_ph: schedule_ph,
+        #                                 self.is_training_ph: False}))
         return self.sess.run(self.actions,
                              feed_dict={self.state_ph: state_ph,
                                         self.schedule_ph: schedule_ph,

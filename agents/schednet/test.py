@@ -1,4 +1,6 @@
 import tensorflow as tf
-sess = tf.compat.v1.Session()
-gpu_available = tf.config.list_physical_devices('GPU')
-print("CUDA is available: ", gpu_available)
+threshold=.5
+ret = 1.3
+binary_output = tf.cast(tf.math.greater(ret, threshold), tf.float32)
+
+print(binary_output)
