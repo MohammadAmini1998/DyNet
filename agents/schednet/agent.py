@@ -23,7 +23,7 @@ class PredatorAgent(object):
 
     def __init__(self, n_agent, action_dim, state_dim, obs_dim, name=""):
         logger.info("Predator Agent is created")
-
+        self.capacity=FLAGS.capa
         self._n_agent = n_agent
         self._state_dim = state_dim
         self._action_dim_per_unit = action_dim
@@ -32,7 +32,7 @@ class PredatorAgent(object):
 
         self._name = name
         self.update_cnt = 0
-
+        self.capacity=FLAGS.capa
         # Make Networks
         tf.compat.v1.reset_default_graph()
         my_graph = tf.Graph()
@@ -63,12 +63,28 @@ class PredatorAgent(object):
     #  tensor and passes it to the ActionSelectorNetwork to obtain the probability distribution over actions for each predator 
     # agent. The method then samples an action for
     #  each predator agent using the corresponding probability distribution and returns the list of actions.
-    
-    def act(self, obs_list, schedule_list):
+    def convert(self, allocation,capacity):
+        allocation_mask=[]
+        allocation=list(allocation)
+        for i in allocation:
+            my_list_true = [True for _ in range(int(i))]
+            my_list_False=[False for _ in range(int(capacity-i))]
+            allocation_mask.extend(my_list_true)
+            allocation_mask.extend(my_list_False)
+        count_true = allocation_mask.count(True)
+        return allocation_mask
 
+    def act(self, obs_list, schedule_list,priority):
+        bandwidth=self.bandwidth_allocation(priority)
+        bandwidth=list(bandwidth)
+
+        bandwidth=self.convert(bandwidth,FLAGS.capa)
+        bandwidth=np.array(bandwidth,dtype=np.float32)
         action_prob_list = self.action_selector.action_for_state(np.concatenate(obs_list)
                                                                    .reshape(1, self._obs_dim),
-                                                                 schedule_list.reshape(1, self._n_agent))
+                                                                 schedule_list.reshape(1, self._n_agent),
+                                                                 bandwidth.reshape(1,self.capacity * self._n_agent))
+        
 
         if np.isnan(action_prob_list).any():
             raise ValueError('action_prob contains NaN')
@@ -78,6 +94,27 @@ class PredatorAgent(object):
             action_list.append(np.random.choice(len(action_prob), p=action_prob))
 
         return action_list
+    
+    def bandwidth_allocation(self,weights,capacity=FLAGS.capa):
+        softmax_weights = np.exp(weights) / np.sum(np.exp(weights))
+
+        # allocation=np.array(allocation,dtype=np.float32)
+        allocation=softmax_weights*capacity
+        allocation=np.round(allocation)
+        if np.sum(allocation)<capacity:
+            while np.sum(allocation)<capacity:
+                max_value = np.argmax(allocation)
+                allocation[max_value]+=1
+
+        if np.sum(allocation)>capacity:
+            while np.sum(allocation)>capacity:
+                max_value = np.argmin(allocation)
+                allocation[max_value]-=1
+
+        allocation=allocation.tolist()
+        # print(allocation)
+        # print(allocation)
+        return allocation
 
     def train(self, state, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority, done):
 
@@ -89,14 +126,15 @@ class PredatorAgent(object):
         o_ = obs_next_list
         c = schedule_n
         p = priority
+        bandwidth=self.bandwidth_allocation(priority)
 
-        self.store_sample(s, o, a, r, s_, o_, c, p, done)
+        bandwidth_mask=self.convert(list(bandwidth),self.capacity)
+        self.store_sample(s, o, a, r, s_, o_, c, p,bandwidth,bandwidth_mask, done)
         self.update_ac()
         return 0
 
-    def store_sample(self, s, o, a, r, s_, o_, c, p, done):
-
-        self.replay_buffer.add_to_memory((s, o, a, r, s_, o_, c, p, done))
+    def store_sample(self, s, o, a, r, s_, o_, c, p,bandwidth,bandwidth_mask, done):
+        self.replay_buffer.add_to_memory((s, o, a, r, s_, o_, c, p,bandwidth,bandwidth_mask, done))
         return 0
 
     def update_ac(self):
@@ -105,14 +143,14 @@ class PredatorAgent(object):
             return 0
 
         minibatch = self.replay_buffer.sample_from_memory()
-        s, o, a, r, s_, o_, c, p, d = map(np.array, zip(*minibatch))
+        s, o, a, r, s_, o_, c, p,bandwidth,bandwidth_mask, d = map(np.array, zip(*minibatch))
         o = np.reshape(o, [-1, self._obs_dim])
         o_ = np.reshape(o_, [-1, self._obs_dim])
 
         p_ = self.weight_generator.target_schedule_for_obs(o_)
         
         td_error, _ = self.critic.training_critic(s, r, s_, p, p_, d)  # train critic
-        _ = self.action_selector.training_actor(o, a, c, td_error)  # train actor
+        _ = self.action_selector.training_actor(o, a, c,bandwidth_mask, td_error)  # train actor
 
         wg_grads = self.critic.grads_for_scheduler(s, p)
         _ = self.weight_generator.training_weight_generator(o, wg_grads)

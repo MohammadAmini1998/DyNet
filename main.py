@@ -23,7 +23,7 @@ def set_seed(seed):
 
 
 if __name__ == '__main__':
-
+ 
     set_seed(1)
 
     logger_env = logging.getLogger('GridMARL')

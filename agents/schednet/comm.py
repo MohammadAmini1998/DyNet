@@ -14,7 +14,7 @@ FLAGS = config.flags.FLAGS
 # of all predator agents and the communication schedule for the current step and generates a concatenated 
 # communication message for all predator agents using the decode_concat_network() function.
 
-def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, trainable=True, share=False, schedule=None):
+def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent,bandwidth, trainable=True, share=False, schedule=None):
     actions = list()
     h_num = 32
 
@@ -40,12 +40,12 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
         for i in range(n_agent):
             aggr_scope = "aggr" + str(i)
             with tf.compat.v1.variable_scope(aggr_scope):
-                aggr_out = decode_concat_network(encoder_list, schedule, capacity, decoder_out_dim)
+                aggr_out = decode_concat_network(encoder_list, schedule, bandwidth,capacity, decoder_out_dim)
             aggr_list.append(aggr_out)
 
     else:
         with tf.variable_scope(aggr_scope):
-            aggr_out = decode_concat_network(encoder_list, schedule, capacity, decoder_out_dim)
+            aggr_out = decode_concat_network(encoder_list, schedule, bandwidth,capacity, decoder_out_dim)
         for i in range(n_agent):
             aggr_list.append(aggr_out)
 
@@ -60,7 +60,7 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
 
         actions.append(agent_actor)
 
-    return tf.concat(actions, axis=-1),aggr_out
+    return tf.concat(actions, axis=-1)
 
 #  the function generates an actor network for each predator agent's communication action
 #  using the comm_encoded_obs() function, which takes in the observation of the predator
@@ -73,7 +73,9 @@ def generate_comm_network(obs_list, obs_dim_per_unit, action_dim, n_agent, train
 #  of encoder_network() is a tensor of shape (batch_size, out_dim).
 
 # Action selector: 
-def comm_encoded_obs(obs, c_input, action_dim, h_num, trainable=True):
+
+def comm_encoded_obs(obs, c_input, action_dim, h_num, trainable=True): 
+    c_input = tf.cast(c_input, tf.float32)   
     c_input = tf.concat([obs, c_input], axis=1)
     hidden_1 = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
                                      kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
@@ -135,9 +137,17 @@ def encoder_network(e_input, out_dim, h_num, h_level, name="encoder", trainable=
 # The decode_concat_network() function returns the reshaped tensor, which can then be used as input to the comm_encoded_obs() function to generate a probability distribution over the possible communication actions, as I explained in my previous response.
 
 
-def decode_concat_network(m_input_list, schedule, capacity, out_dim):
-
+def decode_concat_network(m_input_list, schedule,bandwidth, capacity, out_dim):
     inp = tf.stack(m_input_list, axis=-2)
-    print(inp)
-    masked_msg = tf.boolean_mask(tf.reshape(inp, [-1, capacity]), tf.reshape(tf.cast(schedule, tf.bool), [-1]))
-    return tf.reshape(masked_msg, [-1, FLAGS.s_num * capacity], name='scheduled')
+    flattened_schedule = tf.reshape(bandwidth, [-1])  # Flatten the schedule tensor
+
+    # Create a boolean mask based on the updated schedule
+    mask = tf.reshape(flattened_schedule, [-1])  # No need to cast to tf.bool
+
+    flattened_inp = tf.reshape(inp, [-1])  # Flatten inp to shape [-1]
+
+    masked_msg = tf.boolean_mask(flattened_inp, mask)  # Apply the mask element-wise
+
+    x = tf.reshape(masked_msg, [-1, capacity], name='scheduled')
+
+    return x

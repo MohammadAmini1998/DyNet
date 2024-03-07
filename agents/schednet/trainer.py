@@ -78,7 +78,7 @@ class Trainer(object):
                 step_in_ep += 1
 
                 schedule_n, priority = self.get_schedule(obs_n, global_step, FLAGS.sched)
-                action_n = self.get_action(obs_n, schedule_n, global_step)
+                action_n = self.get_action(obs_n, schedule_n,priority, global_step)
                 obs_n_without_schedule, reward_n, done_n, info_n = self._env.step(action_n)
                 obs_n_next, state_next, h_schedule_n = self.get_obs_state_with_schedule(obs_n_without_schedule, info_n, h_schedule_n, schedule_n)
                 if FLAGS.gui:
@@ -111,7 +111,7 @@ class Trainer(object):
         self._predator_agent.save_nn(global_step)
         self._eval.summarize()
 
-    def get_action(self, obs_n, schedule_n, global_step, train=True):
+    def get_action(self, obs_n, schedule_n,priority, global_step, train=True):
 
         act_n = [0] * len(obs_n)
         self.epsilon = max(self.epsilon - epsilon_dec, epsilon_min)
@@ -123,7 +123,7 @@ class Trainer(object):
         else:
             # Exploitation
             predator_obs = [obs_n[i] for i in self._agent_profile['predator']['idx']]
-            predator_action = self._predator_agent.act(predator_obs, schedule_n)
+            predator_action = self._predator_agent.act(predator_obs, schedule_n,priority)
 
         for i, idx in enumerate(self._agent_profile['predator']['idx']):
             act_n[idx] = predator_action[i]
@@ -234,7 +234,7 @@ class Trainer(object):
                 step_in_ep += 1
 
                 schedule_n, priority = self.get_schedule(obs_n, global_step, FLAGS.sched)
-                action_n = self.get_action(obs_n, schedule_n, global_step, False)
+                action_n = self.get_action(obs_n, schedule_n,priority, global_step, False)
                 obs_n_without_schedule, reward_n, done_n, info_n = self._env.step(action_n)
                 obs_n_next, state_next, h_schedule_n = self.get_obs_state_with_schedule(obs_n_without_schedule, info_n, h_schedule_n, schedule_n)
 
