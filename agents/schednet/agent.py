@@ -9,6 +9,7 @@ from agents.schednet.replay_buffer import ReplayBuffer
 from agents.schednet.ac_network import ActionSelectorNetwork
 from agents.schednet.ac_network import CriticNetwork
 from agents.schednet.sched_network import WeightGeneratorNetwork
+from agents.schednet.scheduler import Scheduler
 from agents.evaluation import Evaluation
 
 import logging
@@ -43,7 +44,7 @@ class PredatorAgent(object):
             self.action_selector = ActionSelectorNetwork(self.sess, self._n_agent, self._obs_dim_per_unit, self._action_dim_per_unit, self._name)
             self.weight_generator = WeightGeneratorNetwork(self.sess, self._n_agent, self._obs_dim)
             self.critic = CriticNetwork(self.sess, self._n_agent, self._state_dim, self._name)
-
+            self.scheduler=Scheduler(self.sess, self._n_agent, self._n_agent)
             tf.compat.v1.global_variables_initializer().run(session=self.sess)
             self.saver = tf.compat.v1.train.Saver()
 
@@ -105,36 +106,37 @@ class PredatorAgent(object):
             while np.sum(allocation)<capacity:
                 max_value = np.argmax(allocation)
                 allocation[max_value]+=1
-
         if np.sum(allocation)>capacity:
             while np.sum(allocation)>capacity:
                 max_value = np.argmin(allocation)
                 allocation[max_value]-=1
-
         allocation=allocation.tolist()
         # print(allocation)
         # print(allocation)
         return allocation
 
-    def train(self, state, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority, done):
+    def train(self, state, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n, priority,weights, done):
 
         s = state
         o = obs_list
         a = action_list
+        
         r = np.sum(reward_list)
         s_ = state_next
         o_ = obs_next_list
         c = schedule_n
         p = priority
-        bandwidth=self.bandwidth_allocation(priority)
+        w=weights
+    
+        bandwidth=self.bandwidth_allocation(w)
 
         bandwidth_mask=self.convert(list(bandwidth),self.capacity)
-        self.store_sample(s, o, a, r, s_, o_, c, p,bandwidth,bandwidth_mask, done)
+        self.store_sample(s, o, a, r, s_, o_, c, p,w,bandwidth,bandwidth_mask, done)
         self.update_ac()
         return 0
 
-    def store_sample(self, s, o, a, r, s_, o_, c, p,bandwidth,bandwidth_mask, done):
-        self.replay_buffer.add_to_memory((s, o, a, r, s_, o_, c, p,bandwidth,bandwidth_mask, done))
+    def store_sample(self, s, o, a, r, s_, o_, c, p,w, bandwidth,bandwidth_mask, done):
+        self.replay_buffer.add_to_memory((s, o, a, r, s_, o_, c, p,w,bandwidth,bandwidth_mask, done))
         return 0
 
     def update_ac(self):
@@ -143,26 +145,36 @@ class PredatorAgent(object):
             return 0
 
         minibatch = self.replay_buffer.sample_from_memory()
-        s, o, a, r, s_, o_, c, p,bandwidth,bandwidth_mask, d = map(np.array, zip(*minibatch))
+        s, o, a, r, s_, o_, c, p,w,bandwidth,bandwidth_mask, d = map(np.array, zip(*minibatch))
+     
         o = np.reshape(o, [-1, self._obs_dim])
         o_ = np.reshape(o_, [-1, self._obs_dim])
 
         p_ = self.weight_generator.target_schedule_for_obs(o_)
+        w_=self.scheduler.target_schedule_for_obs(p_)
         
-        td_error, _ = self.critic.training_critic(s, r, s_, p, p_, d)  # train critic
+        td_error, _ = self.critic.training_critic(s, r, s_, p, p_,w,w_, d)  # train critic
         _ = self.action_selector.training_actor(o, a, c,bandwidth_mask, td_error)  # train actor
 
         wg_grads = self.critic.grads_for_scheduler(s, p)
         _ = self.weight_generator.training_weight_generator(o, wg_grads)
-        _ = self.critic.training_target_critic()  # train slow target critic
         _ = self.weight_generator.training_target_weight_generator()
+
+        weights_grads=self.critic.grads_for_weights_scheduler(s, w)
+        _ = self.scheduler.training_weight_generator(p, weights_grads)
+        _ = self.scheduler.training_target_weight_generator()
+        _ = self.critic.training_target_critic() # train slow target critic
+
 
         return 0
 
     def schedule(self, obs_list):
         priority = self.weight_generator.schedule_for_obs(np.concatenate(obs_list)
                                                            .reshape(1, self._obs_dim))
-
+        priority_weights=priority.reshape(-1,self._n_agent)
+        weights = self.scheduler.schedule_for_obs(priority_weights)
+        
+        
         if FLAGS.sch_type == "top":
             schedule_idx = np.argsort(-priority)[:FLAGS.s_num]
         elif FLAGS.sch_type == "softmax":
@@ -173,7 +185,7 @@ class PredatorAgent(object):
                             
         ret = np.zeros(self._n_agent)
         ret[schedule_idx] = 1.0
-        return ret, priority
+        return ret, priority,weights
 
     def explore(self):
         return [random.randrange(self._action_dim_per_unit)
