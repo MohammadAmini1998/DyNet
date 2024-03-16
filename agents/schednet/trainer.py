@@ -15,11 +15,10 @@ import random
 FLAGS = config.flags.FLAGS
 logger = logging.getLogger('Agent')
 result = logging.getLogger('Result')
-
+stop=750000
 training_step = FLAGS.training_step
 testing_step = FLAGS.testing_step
-step1=1/750000
-epsilon_dec = 1/750000
+epsilon_dec = 1/training_step
 epsilon_min = 0.01
 
 summary_writer = tf.summary.create_file_writer("logdir")
@@ -58,14 +57,14 @@ class Trainer(object):
             self.canvas.setup()
     # Main function of the algorithm. 
     def generate_action_space(self):
-        values = [0, 1, 2, 3]
+        values = [0, 1, 2, 3,4]
         action_space = []
 
         # Generate all possible combinations of values
         combinations = list(itertools.product(values, repeat=4))
 
         # Filter combinations where the sum of each element is not above 3
-        valid_combinations = [combo for combo in combinations if sum(combo) <= 3]
+        valid_combinations = [combo for combo in combinations if sum(combo) ==3]
 
         # Convert combinations to action vectors
         for combo in valid_combinations:
@@ -85,14 +84,18 @@ class Trainer(object):
     
     def learn(self):
         action_space=self.generate_action_space()
+        print(action_space)
         global_step = 0
         episode_num = 0
         print_flag = True
+        episode_count=0
+        
 
-        while global_step < training_step:
+        while global_step < stop:
+            
+            
             episode_num += 1
             step_in_ep = 0
-
             obs_n = self._env.reset()  
             info_n = self._env.get_info()
             h_schedule_n = np.zeros(self._n_predator)  # schedule history
@@ -103,47 +106,55 @@ class Trainer(object):
             done = False
 
             while not done:
+                
                 global_step += 1
                 step_in_ep += 1
 
-                schedule_n,action, priority,priority1 = self.get_schedule(obs_n, global_step,action_space, FLAGS.sched)
+                schedule_n,action, priority = self.get_schedule(obs_n, global_step,action_space, FLAGS.sched)
                 action_n,count = self.get_action(obs_n, schedule_n, global_step)
+                episode_count+=count[0][0]
                 obs_n_without_schedule, reward_n, done_n, info_n = self._env.step(action_n)
                 obs_n_next, state_next, h_schedule_n = self.get_obs_state_with_schedule(obs_n_without_schedule, info_n, h_schedule_n, schedule_n)
+                
                 if FLAGS.gui:
                     self.canvas.draw(state_next * FLAGS.map_size, [0]*self._n_predator, "Train")
 
                 done_single = sum(done_n) > 0
-                self.train_agents(state,action, obs_n, action_n, reward_n, state_next, obs_n_next, schedule_n,count, priority,priority1, done_single)
+                self.train_agents(state,action, obs_n, action_n, reward_n, state_next, obs_n_next, schedule_n,count, priority, done_single)
                 
                 
                 obs_n = obs_n_next
                 state = state_next
                 total_reward += np.sum(reward_n)
 
-
+                
                 if global_step%10000==0:
-                    print(priority)
-                    print(priority1)
+                    pass
+                    # print(count)
                 
 
                 with summary_writer.as_default():
                     if is_episode_done(done_n, global_step):
+
                         if FLAGS.gui:
                             self.canvas.draw(state_next * FLAGS.map_size, [0]*self._n_predator, "Train", True)
-                        if print_flag:
-                            print("[train_ep %d]" % (episode_num),"\tstep:", global_step, "\tstep_per_ep:", step_in_ep, "\treward", total_reward,"\tepsilon",self.epsilon)
+                        # print(episode_count)
                         done = True
+                        
+                        
         
                     tf.summary.scalar("Reward in each episode", total_reward, step=global_step)
-                    tf.summary.scalar("Total step in each episode", step_in_ep, step=global_step)
-
+                    tf.summary.scalar("Total communication in each episode", step_in_ep *4 + episode_count, step=global_step)
+                    # tf.summary.scalar("Total messages in each episode", episode_count, step=global_step)
+                
                 if FLAGS.eval_on_train and global_step % FLAGS.eval_step == 0:
                     self.test(global_step)
                     break
-
-        self._predator_agent.save_nn(global_step)
-        self._eval.summarize()
+                
+            episode_count=0                
+        # self._predator_agent.save_nn(global_step)
+        # self._eval.summarize()
+            
 
     def get_action(self, obs_n, schedule_n, global_step, train=True):
 
@@ -151,18 +162,8 @@ class Trainer(object):
         self.epsilon = max(self.epsilon - epsilon_dec, epsilon_min)
 
         # Action of predator
-        if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step):  # with prob. epsilon
-            # Exploration
-            predator_action = self._predator_agent.explore()
-            c_new=self.convert(schedule_n,FLAGS.capa)
-            c_new=np.array([c_new])
-            count = np.count_nonzero(c_new)
-            count=np.array([count])
-            count=np.reshape(count,[-1,1])
-        else:
-            # Exploitation
-            predator_obs = [obs_n[i] for i in self._agent_profile['predator']['idx']]
-            predator_action,count = self._predator_agent.act(predator_obs, schedule_n)
+        predator_obs = [obs_n[i] for i in self._agent_profile['predator']['idx']]
+        predator_action,count = self._predator_agent.act(predator_obs, schedule_n)
 
         for i, idx in enumerate(self._agent_profile['predator']['idx']):
             act_n[idx] = predator_action[i]
@@ -176,42 +177,16 @@ class Trainer(object):
     def get_schedule(self, obs_n, global_step,action_space, type, train=True):
 
         predator_obs = [obs_n[i] for i in self._agent_profile['predator']['idx']]
+        return self._predator_agent.schedule(predator_obs,FLAGS.capa,self.epsilon,action_space)
 
-        if train and (global_step < FLAGS.m_size * FLAGS.pre_train_step):
-            # Exploration: Schedule k random agent
-            priority = np.random.rand(self._n_predator)
-            priority1 = np.random.rand(self._n_predator)
-            # sorted_agents = np.argsort(-priority1)
-            # allocation = np.zeros(4)
-            # remaining_bandwidth = FLAGS.capa
-            # softmax_weights = np.exp(priority1) / np.sum(np.exp(priority1))
-
-    # Allocate bandwidth to agents starting from the largest priority1 values
-            # while remaining_bandwidth>0:
-            #     for agent in sorted_agents:
-            #             agent_allocation = np.ceil((softmax_weights[agent]*remaining_bandwidth))
-            #             allocation[agent] = agent_allocation
-            #             remaining_bandwidth -= agent_allocation
-            action = np.random.randint(0, 35)
-            
-            
-            c_new=action_space[action]
-            
-            
-            
-            return c_new,action,priority,priority1
-        else:
-            # Exploitation
-            return self._predator_agent.schedule(predator_obs,FLAGS.capa,self.epsilon,action_space)
-
-    def train_agents(self, state,action, obs_n, action_n, reward_n, state_next, obs_n_next, schedule_n,count, priority,priority1, done):
+    def train_agents(self, state,action, obs_n, action_n, reward_n, state_next, obs_n_next, schedule_n,count, priority, done):
         
         predator_obs = [obs_n[i] for i in self._agent_profile['predator']['idx']]
         predator_action = [action_n[i] for i in self._agent_profile['predator']['idx']]
         predator_reward = [reward_n[i] for i in self._agent_profile['predator']['idx']]
         predator_obs_next = [obs_n_next[i] for i in self._agent_profile['predator']['idx']]
         self._predator_agent.train(state,action, predator_obs, predator_action, predator_reward,
-                                   state_next, predator_obs_next, schedule_n,count, priority,priority1, done)
+                                   state_next, predator_obs_next, schedule_n,count, priority, done)
     #  The method concatenates the observations of the predator agents with the
     #  communication schedule history and returns the modified observation and state arrays.
     def get_h_obs_state(self, obs_n, state, h_schedule):
@@ -241,10 +216,8 @@ class Trainer(object):
             obs_final.append(obs_n_h[i])
         for i in range(self._n_prey):
             obs_final.append(obs_n_ws[self._n_predator + i])
-        # max_len = max([len(x) for x in obs_final])
-        # padded_data = [np.pad(x, (0, max_len - len(x)), mode='constant') for x in obs_final]
-        # obs_n = np.array(padded_data)
-        obs_n = np.array(obs_final)
+
+        obs_n = np.array(obs_final,dtype=object)
         state = np.concatenate((info_n[0]['state'], h_schedule_n), axis=-1)
 
         return obs_n, state, h_schedule_n
@@ -289,7 +262,7 @@ class Trainer(object):
 
                 global_step += 1
                 step_in_ep += 1
-                schedule_n,action, priority,priority1 = self.get_schedule(obs_n, global_step,action_space, FLAGS.sched)
+                schedule_n,action, priority = self.get_schedule(obs_n, global_step,action_space, FLAGS.sched)
                 action_n,count = self.get_action(obs_n, schedule_n, global_step, False)
                 obs_n_without_schedule, reward_n, done_n, info_n = self._env.step(action_n)
                 obs_n_next, state_next, h_schedule_n = self.get_obs_state_with_schedule(obs_n_without_schedule, info_n, h_schedule_n, schedule_n)

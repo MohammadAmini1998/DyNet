@@ -14,7 +14,7 @@ def config_agent(_flags):
 
     # RL setting
     flags.DEFINE_float("df", 0.9, "Discount factor")
-    flags.DEFINE_integer("b_size", 20000, "Size of the replay memory")
+    flags.DEFINE_integer("b_size", 50000, "Size of the replay memory")
     flags.DEFINE_integer("m_size", 256, "Minibatch size")
     flags.DEFINE_integer("pre_train_step", 10, "during [m_size * pre_step] take random action")
 

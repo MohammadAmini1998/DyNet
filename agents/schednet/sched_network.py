@@ -67,17 +67,17 @@ class WeightGeneratorNetwork:
         return schedule
 
     def generate_wg_network(self, obs, trainable=True):
-        hidden_1 = tf.compat.v1.layers.dense(obs, h1_scheduler, activation=tf.nn.relu,
+        hidden_1 =tf.keras.layers.Dense(units=h1_scheduler, activation=tf.nn.relu,
                                    kernel_initializer=tf.random_normal_initializer(0., .1),
                                    bias_initializer=tf.constant_initializer(0.1),  
-                                   use_bias=True, trainable=trainable)
+                                   use_bias=True, trainable=trainable)(obs)
 
-        hidden_2 = tf.compat.v1.layers.dense(hidden_1, h2_scheduler, activation=tf.nn.relu,
+        hidden_2 =tf.keras.layers.Dense(units=h2_scheduler, activation=tf.nn.relu,
                                    kernel_initializer=tf.random_normal_initializer(0., .1),
                                    bias_initializer=tf.constant_initializer(0.1),  
-                                   use_bias=True, trainable=trainable)
+                                   use_bias=True, trainable=trainable)(hidden_1)
 
-        schedule = tf.compat.v1.layers.dense(hidden_2, 1, activation=tf.nn.sigmoid, trainable=trainable)
+        schedule =tf.keras.layers.Dense(units=1, activation=tf.nn.sigmoid, trainable=trainable)(hidden_2)
 
         return schedule
 

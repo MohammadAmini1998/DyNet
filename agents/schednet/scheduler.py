@@ -16,7 +16,7 @@ h2_critic = h_critic  # hidden layer 2 size for the critic
 h3_critic = h_critic  # hidden layer 3 size for the critic
 
 # Learning rates: 
-lr_actor = 0.00001   # learning rate for the actor
+lr_actor =  0.00001   # learning rate for the actor
 lr_critic = 0.00001  # learning rate for the critic
 lr_decay = 1  # learning rate decay (per episode)
 
@@ -30,8 +30,8 @@ class Scheduler:
 
         self.sess = sess
         self.n_agent = n_agent
-        self.state_dim = 8
-        self.action_dim=35
+        self.state_dim = 4
+        self.action_dim=20
         
         if nn_id == None:
             scope = 'critic1'
@@ -39,9 +39,9 @@ class Scheduler:
             scope = 'critic_1' + str(nn_id)
 
         # placeholders
-        self.state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, 8])
+        self.state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, 4])
         self.reward_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None])
-        self.next_state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, 8])
+        self.next_state_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None, 4])
         self.action_ph=tf.compat.v1.placeholder(dtype=tf.int32, shape=[None, 1])
         self.is_not_terminal_ph = tf.compat.v1.placeholder(dtype=tf.float32, shape=[None])  # indicators (go into target computation)
         self.is_training_ph = tf.compat.v1.placeholder(dtype=tf.bool, shape=())  # for dropout
@@ -75,7 +75,7 @@ class Scheduler:
         # = r_i if s' terminal
         self.selected_q_values = tf.gather(self.q_values, self.action_ph, axis=1)
 
-        targets = tf.expand_dims(self.reward_ph, 1) + tf.expand_dims(self.is_not_terminal_ph, 1) * .90 * self.max_q_value
+        targets = tf.expand_dims(self.reward_ph, 1) + tf.expand_dims(self.is_not_terminal_ph, 1) * .9 * self.max_q_value
 
 
         # 1-step temporal difference errors
