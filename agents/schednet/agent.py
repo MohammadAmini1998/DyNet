@@ -12,6 +12,8 @@ from agents.schednet.sched_network import WeightGeneratorNetwork
 from agents.schednet.bit_network import WeightGeneratorNetwork1
 from agents.schednet.scheduler import Scheduler
 from agents.evaluation import Evaluation
+import numpy as np
+from sklearn.neighbors import KernelDensity
 
 import logging
 import config
@@ -66,15 +68,39 @@ class PredatorAgent(object):
     #  tensor and passes it to the ActionSelectorNetwork to obtain the probability distribution over actions for each predator 
     # agent. The method then samples an action for
     #  each predator agent using the corresponding probability distribution and returns the list of actions.
-    
+    def calculate_entropy_kde(self,data):
+        if np.isnan(data).any():
+            raise ValueError('Messages contains NaN')
+    # Reshape the data into a 2D array
+        data = data.reshape(-1, 1)
+        min_val = np.min(data)
+        max_val = np.max(data)
+        normalized_data = (data - min_val) / (max_val - min_val)
+        
+        # Fit the KDE model
+        kde = KernelDensity(bandwidth=1.0, kernel='gaussian')
+        kde.fit(normalized_data)
+        
+        # Calculate log-density values for each data point
+        log_densities = kde.score_samples(data)
+        
+        # Convert log-density values to probabilities
+        probabilities = np.exp(log_densities)
+        
+        # Calculate entropy
+        entropy = -np.sum(probabilities * np.log(probabilities + 1e-10))  # Add a small value to avoid log(0)
+        
+        return entropy
     def act(self, obs_list, schedule_list):
         c_new=self.convert(schedule_list,FLAGS.capa)
         c_new=np.array([c_new])
         count = np.count_nonzero(c_new)
         count=np.array([count])
         count=np.reshape(count,[-1,1])
-        action_prob_list = self.action_selector.action_for_state(np.concatenate(obs_list)
+        action_prob_list,messages = self.action_selector.action_for_state(np.concatenate(obs_list)
                                                                    .reshape(1, self._obs_dim),c_new,count)
+        
+        entropy=self.calculate_entropy_kde(messages.flatten())
 
         if np.isnan(action_prob_list).any():
             raise ValueError('action_prob contains NaN')
@@ -83,15 +109,16 @@ class PredatorAgent(object):
         for action_prob in action_prob_list.reshape(self._n_agent, self._action_dim_per_unit):
             action_list.append(np.random.choice(len(action_prob), p=action_prob))
 
-        return action_list,count
+        return action_list,count,entropy
 
-    def train(self, state,action, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n,count, priority, done):
+    def train(self, state,action, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n,count, priority, entropy,done):
         s = state
         action=action
         count=count
         o = obs_list
         a = action_list
-        r = np.sum(reward_list)
+        r = np.sum(reward_list)-.005*entropy*count[0][0]
+        # r = np.sum(reward_list)
         s_ = state_next
         o_ = obs_next_list
         c = schedule_n
@@ -101,7 +128,7 @@ class PredatorAgent(object):
         self.update_ac()
         return 0
 
-    def store_sample(self, s,action, o, a, r, s_, o_, c,count, p, done):
+    def store_sample(self, s,action, o, a, r, s_, o_, c,count, p,done):
         c_new=self.convert(c,FLAGS.capa)
 
         self.replay_buffer.add_to_memory((s,action, o, a, r, s_, o_, c,c_new,count, p, done))
@@ -186,7 +213,7 @@ class PredatorAgent(object):
 
         if np.random.rand()<epsilon:
 
-            action = np.random.randint(0, 20)
+            action = np.random.randint(0, 125)
             c_new=action_space[action]
       
         else:

@@ -46,7 +46,7 @@ def generate_comm_network(count,obs_list, obs_dim_per_unit, action_dim, n_agent,
 
     else:
         with tf.variable_scope(aggr_scope):
-            aggr_out,schedule = decode_concat_network(encoder_list, schedule, capacity, decoder_out_dim)
+            aggr_out,schedule,inp = decode_concat_network(encoder_list, schedule, capacity, decoder_out_dim)
         for i in range(n_agent):
             aggr_list.append(aggr_out)
 
@@ -103,17 +103,17 @@ def comm_encoded_obs(obs, c_input, action_dim, h_num, trainable=True):
 # out_dim is capacity of the communication, h_num is number of neurons in each layer andh_level is the number of layers.
 # For example, the output may be 10 which tells us that, the capacity of the communication is 2. 
 # This is like feature extraction that maps observation into lower dimensions representations of it. 
-
 def encoder_network(e_input, out_dim, h_num, h_level, name="encoder", trainable=True):
     hidden = e_input
     for i in range(h_level):
-        hidden = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
-                                       kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
+        hidden = tf.keras.layers.Dense(units=h_num, activation=tf.nn.tanh,
+                                       kernel_initializer=tf.keras.initializers.GlorotNormal(),  # Xavier initialization
                                        bias_initializer=tf.constant_initializer(0.1),  # biases
                                        use_bias=True, trainable=trainable, name=name+str(i))(hidden)
+        hidden = tf.keras.layers.BatchNormalization()(hidden)  # Batch normalization
 
-    ret = tf.keras.layers.Dense(units=out_dim, activation=tf.nn.relu,
-                                kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
+    ret = tf.keras.layers.Dense(units=out_dim, activation=tf.nn.tanh,
+                                kernel_initializer=tf.keras.initializers.GlorotNormal(),  # Xavier initialization
                                 bias_initializer=tf.constant_initializer(0.1),  # biases
                                 use_bias=True, trainable=trainable, name=name+"_out")(hidden)
     return ret
@@ -131,10 +131,10 @@ def encoder_network(e_input, out_dim, h_num, h_level, name="encoder", trainable=
 
 # For example, if the masked communication messages tensor is [2, 3, 4, 6, 8, 9], the reshaped tensor will be [[2, 3, 4, 6, 8, 9]], because there is only one example in the batch. The first two elements of the tensor correspond to the communication message from the second predator agent, the next two elements correspond to the communication message from the third predator agent, and the final two elements correspond to the communication message from the sixth predator agent.
 # The decode_concat_network() function returns the reshaped tensor, which can then be used as input to the comm_encoded_obs() function to generate a probability distribution over the possible communication actions, as I explained in my previous response.
-# def filter_tensor(tensor_values, mask_values):
-#     mask_values = tf.cast(mask_values, dtype=tensor_values.dtype)  # Convert boolean mask to the same type as tensor_values
-#     filtered_tensor = tensor_values * mask_values  # Element-wise multiplication to zero-out values where mask_values are False
-#     return filtered_tensor
+def filter_tensor(tensor_values, mask_values):
+    mask_values = tf.cast(mask_values, dtype=tensor_values.dtype)  # Convert boolean mask to the same type as tensor_values
+    filtered_tensor = tensor_values * mask_values  # Element-wise multiplication to zero-out values where mask_values are False
+    return filtered_tensor
 
 def decode_concat_network(m_input_list, schedule, capacity, out_dim):
     inp = tf.stack(m_input_list, axis=-2)
@@ -144,10 +144,9 @@ def decode_concat_network(m_input_list, schedule, capacity, out_dim):
     mask = tf.reshape(flattened_schedule, [-1])  # No need to cast to tf.bool
 
     flattened_inp = tf.reshape(inp, [-1])  # Flatten inp to shape [-1]
+    filtered_result = filter_tensor(flattened_inp, mask)
+    # masked_msg = tf.boolean_mask(flattened_inp, mask)  # Apply the mask element-wise
 
-    masked_msg = tf.boolean_mask(flattened_inp, mask)  # Apply the mask element-wise
-
-    x = tf.reshape(masked_msg, [-1, capacity], name='scheduled')
-
+    x = tf.reshape(filtered_result, [-1, capacity*4], name='scheduled')
 
     return x, schedule,inp

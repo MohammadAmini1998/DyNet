@@ -19,7 +19,7 @@ h2_critic = h_critic  # hidden layer 2 size for the critic
 h3_critic = h_critic  # hidden layer 3 size for the critic
 
 # Learning rates: 
-lr_actor = 0.00001   # learning rate for the actor
+lr_actor =  0.00001   # learning rate for the actor
 lr_critic = 0.0001  # learning rate for the critic
 lr_decay = 1  # learning rate decay (per episode)
 
@@ -111,11 +111,6 @@ class ActionSelectorNetwork:
         #                                 self.schedule_ph: schedule_ph,
         #                                 self.count_ph:count_ph,
         #                                 self.is_training_ph: False}))
-        # print( self.sess.run(self.num,
-        #                      feed_dict={self.state_ph: state_ph,
-        #                                 self.schedule_ph: schedule_ph,
-        #                                 self.count_ph:count_ph,
-        #                                 self.is_training_ph: False}))
 
         
        
@@ -127,7 +122,11 @@ class ActionSelectorNetwork:
                              feed_dict={self.state_ph: state_ph,
                                         self.schedule_ph: schedule_ph,
                                         self.count_ph:count_ph,
-                                        self.is_training_ph: False})
+                                        self.is_training_ph: False}),self.sess.run(self.num,
+                                                                    feed_dict={self.state_ph: state_ph,
+                                                                                self.schedule_ph: schedule_ph,
+                                                                                self.count_ph:count_ph,
+                                                                                self.is_training_ph: False})
 
     #  This method performs an actor training step.
     #  It takes in the state, action, schedule, and TD errors placeholders

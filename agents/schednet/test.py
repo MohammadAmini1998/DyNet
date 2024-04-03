@@ -1,15 +1,25 @@
-def generate_action_space(self):
-        values = [0, 1, 2, 3,4]
-        action_space = []
 
-        # Generate all possible combinations of values
-        combinations = list(itertools.product(values, repeat=4))
+import numpy as np
 
-        # Filter combinations where the sum of each element is not above 3
-        valid_combinations = [combo for combo in combinations if sum(combo) ==3]
+# Function to calculate entropy
+def calculate_entropy(data):
+    # Discretize the data into bins
+    num_bins = 1000
+    counts, bins = np.histogram(data, bins=num_bins)
+    
+    # Calculate probabilities
+    probabilities = counts / len(data)
+    
+    # Calculate entropy
+    entropy = -np.sum(probabilities * np.log2(probabilities + 1e-10))  # Add a small value to avoid log(0)
+    
+    return entropy
 
-        # Convert combinations to action vectors
-        for combo in valid_combinations:
-            action_space.append(list(combo))
+# Sample continuous temperature data
+temperature_data = np.random.uniform(low=0, high=100, size=1000)
 
-        return action_space
+print(temperature_data)
+# Calculate entropy
+entropy = calculate_entropy(temperature_data)
+
+print("Entropy of temperature data:", entropy)

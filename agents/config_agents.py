@@ -14,7 +14,7 @@ def config_agent(_flags):
 
     # RL setting
     flags.DEFINE_float("df", 0.9, "Discount factor")
-    flags.DEFINE_integer("b_size", 50000, "Size of the replay memory")
+    flags.DEFINE_integer("b_size", 30000, "Size of the replay memory")
     flags.DEFINE_integer("m_size", 256, "Minibatch size")
     flags.DEFINE_integer("pre_train_step", 10, "during [m_size * pre_step] take random action")
 
@@ -33,7 +33,7 @@ def config_agent(_flags):
     flags.DEFINE_boolean("train", True, "Training or testing")
 
     flags.DEFINE_integer("comm", 5, "Communication type")
-    flags.DEFINE_integer("capa", 3, "Capacity for comm")
+    flags.DEFINE_integer("capa", 5, "Capacity for comm")
     flags.DEFINE_boolean("e_share", False, "Share encoder")
     flags.DEFINE_boolean("s_share", False, "Share sender")
     flags.DEFINE_boolean("a_share", False, "Share aggregator")
