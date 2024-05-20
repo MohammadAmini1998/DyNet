@@ -7,7 +7,7 @@ FLAGS = config.flags.FLAGS
 
 #Hyperparameters: 
 
-gamma = 0.9  # reward discount factor
+gamma = .99  # reward discount factor
 gammaComm=.99
 # Hidden layers:
 h_critic = FLAGS.h_critic
@@ -16,12 +16,12 @@ h2_critic = h_critic  # hidden layer 2 size for the critic
 h3_critic = h_critic  # hidden layer 3 size for the critic
 
 # Learning rates: 
-lr_actor =  0.00001   # learning rate for the actor
-lr_critic = 0.00001  # learning rate for the critic
+lr_actor =  0.0001   # learning rate for the actor
+lr_critic = 0.001  # learning rate for the critic
 lr_decay = 1  # learning rate decay (per episode)
 
 # The soft target update rate. 
-tau = 5e-2 
+tau = 1e-2  
 # It controls the rate at which the target network is updated towards the main network during training.
 # A smaller value results in a slower update rate.
 
@@ -31,7 +31,7 @@ class Scheduler:
         self.sess = sess
         self.n_agent = n_agent
         self.state_dim = 4
-        self.action_dim=20
+        self.action_dim=10
         
         if nn_id == None:
             scope = 'critic1'
@@ -75,7 +75,7 @@ class Scheduler:
         # = r_i if s' terminal
         self.selected_q_values = tf.gather(self.q_values, self.action_ph, axis=1)
 
-        targets = tf.expand_dims(self.reward_ph, 1) + tf.expand_dims(self.is_not_terminal_ph, 1) * .9 * self.max_q_value
+        targets = tf.expand_dims(self.reward_ph, 1)  + .99 * self.max_q_value
 
 
         # 1-step temporal difference errors
@@ -88,7 +88,7 @@ class Scheduler:
         
 
 # minimize critic loss
-        self.critic_train_op = tf.compat.v1.train.AdamOptimizer(lr_critic * lr_decay).minimize(critic_loss, var_list=critic_vars)
+        self.critic_train_op = tf.compat.v1.train.RMSPropOptimizer(lr_critic * lr_decay).minimize(critic_loss, var_list=critic_vars)
         slow_target_critic_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope='slow_target_1'+scope)
         update_slow_target_ops_c = []
         for i, slow_target_var in enumerate(slow_target_critic_vars):

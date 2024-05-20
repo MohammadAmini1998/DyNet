@@ -8,11 +8,11 @@ from agents.schednet import comm
 
 FLAGS = config.flags.FLAGS
 
-h1_scheduler = 32  # hidden layer 1 size 
-h2_scheduler = 32  # hidden layer 2 size 
-lr_wg = FLAGS.w_lr   # learning rate for the weight generator
+h1_scheduler = 64  # hidden layer 1 size 
+h2_scheduler = 64  # hidden layer 2 size 
+lr_wg = 0.001    # learning rate for the weight generator
 lr_decay = 1  # learning rate decay (per episode)
-tau = 5e-2 # soft target update rate
+tau = 1e-2 # soft target update rate
 
 
 class WeightGeneratorNetwork:
@@ -67,17 +67,21 @@ class WeightGeneratorNetwork:
         return schedule
 
     def generate_wg_network(self, obs, trainable=True):
-        hidden_1 =tf.keras.layers.Dense(units=h1_scheduler, activation=tf.nn.relu,
+        hidden_1 =tf.keras.layers.Dense(units=64, activation=tf.nn.relu,
                                    kernel_initializer=tf.random_normal_initializer(0., .1),
                                    bias_initializer=tf.constant_initializer(0.1),  
                                    use_bias=True, trainable=trainable)(obs)
 
-        hidden_2 =tf.keras.layers.Dense(units=h2_scheduler, activation=tf.nn.relu,
+        hidden_2 =tf.keras.layers.Dense(units=64, activation=tf.nn.relu,
                                    kernel_initializer=tf.random_normal_initializer(0., .1),
                                    bias_initializer=tf.constant_initializer(0.1),  
                                    use_bias=True, trainable=trainable)(hidden_1)
+        hidden_3 =tf.keras.layers.Dense(units=64, activation=tf.nn.relu,
+                                   kernel_initializer=tf.random_normal_initializer(0., .1),
+                                   bias_initializer=tf.constant_initializer(0.1),  
+                                   use_bias=True, trainable=trainable)(hidden_2)
 
-        schedule =tf.keras.layers.Dense(units=1, activation=tf.nn.sigmoid, trainable=trainable)(hidden_2)
+        schedule =tf.keras.layers.Dense(units=1, activation=tf.nn.sigmoid, trainable=trainable)(hidden_3)
 
         return schedule
 

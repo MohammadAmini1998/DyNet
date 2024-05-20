@@ -85,7 +85,7 @@ class Scenario(BaseScenario):
             self.atype_to_idx['predator'].append(i)
 
         # add preys
-        n_prey = FLAGS.n_prey
+        n_prey = 4
         for i in range(n_prey):
             agents.append(Prey())
             self.atype_to_idx['prey'].append(n_predator + i)
@@ -106,6 +106,7 @@ class Scenario(BaseScenario):
 
         # randomly place agents
         for agent in world.agents:
+            print(agent.itype)
             world.placeObj(agent)
             if agent.itype == 'predator':
                 agent.reset_obs_prey()

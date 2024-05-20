@@ -68,13 +68,13 @@ class PredatorAgent(object):
     #  each predator agent using the corresponding probability distribution and returns the list of actions.
     
     def act(self, obs_list, schedule_list):
+        obs_list=np.array(obs_list)
         c_new=self.convert(schedule_list,FLAGS.capa)
         c_new=np.array([c_new])
         count = np.count_nonzero(c_new)
         count=np.array([count])
         count=np.reshape(count,[-1,1])
-        action_prob_list = self.action_selector.action_for_state(np.concatenate(obs_list)
-                                                                   .reshape(1, self._obs_dim),c_new,count)
+        action_prob_list,messages = self.action_selector.action_for_state(obs_list.reshape(1, self._obs_dim),c_new,count)
 
         if np.isnan(action_prob_list).any():
             raise ValueError('action_prob contains NaN')
@@ -83,9 +83,9 @@ class PredatorAgent(object):
         for action_prob in action_prob_list.reshape(self._n_agent, self._action_dim_per_unit):
             action_list.append(np.random.choice(len(action_prob), p=action_prob))
 
-        return action_list,count
+        return action_list,count,messages
 
-    def train(self, state,action, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n,count, priority, done):
+    def train(self, state,action, obs_list, action_list, reward_list, state_next, obs_next_list, schedule_n,count, priority, done,step):
         s = state
         action=action
         count=count
@@ -96,9 +96,9 @@ class PredatorAgent(object):
         o_ = obs_next_list
         c = schedule_n
         p = priority
-
         self.store_sample(s,action, o, a, r, s_, o_, c,count, p, done)
-        self.update_ac()
+        if step%50==0:
+            self.update_ac()
         return 0
 
     def store_sample(self, s,action, o, a, r, s_, o_, c,count, p, done):
@@ -122,7 +122,8 @@ class PredatorAgent(object):
     
     def update_ac(self):
         
-        if len(self.replay_buffer.replay_memory) < FLAGS.pre_train_step * FLAGS.m_size:
+        if len(self.replay_buffer.replay_memory) < FLAGS.m_size:
+            print(len(self.replay_buffer.replay_memory))
             return 0
 
         minibatch = self.replay_buffer.sample_from_memory()
@@ -148,9 +149,7 @@ class PredatorAgent(object):
         # next_state_com=tf.concat([p_,p_1],axis=-1)
 
         
-    
-        td_error, _ = self.critic.training_critic(o, r, o_, p, p_, d)  # train critic'
-        
+        td_error, _ = self.critic.training_critic(s, r, s_, p, p_, d)  # train critic'
         
         _ = self.action_selector.training_actor(o, a, c_new,count, td_error)  # train actor
 
@@ -169,35 +168,34 @@ class PredatorAgent(object):
         return 0
 
     def schedule(self, obs_list,l,epsilon,action_space):
-        priority = self.weight_generator.schedule_for_obs(np.concatenate(obs_list)
-                                                           .reshape(1, self._obs_dim))
-        
-        obs_list=np.concatenate(obs_list).reshape(1, self._obs_dim)
-        noise = np.random.normal(loc=0, scale=.3, size=priority.shape)
+        # print("hi")
+        # print(obs_list)
+        obs_list=np.array(obs_list)
+        priority = self.weight_generator.schedule_for_obs(obs_list.reshape(1, self._obs_dim))
+        obs_list=obs_list.reshape(1, self._obs_dim)
 
+        noise = np.random.normal(loc=0, scale=.1, size=priority.shape)
         # Add noise to priority and priority1
         priority_with_noise = priority + noise
 
         # Clip values in priority and priority1
         priority_with_noise = np.clip(priority_with_noise, 0, 1)
-
         # Update priority and priority1 with the clipped versions
         priority = priority_with_noise
-
+        
         if np.random.rand()<epsilon:
 
-            action = np.random.randint(0, 20)
+            action = np.random.randint(0, 10)
             c_new=action_space[action]
       
         else:
             input=np.concatenate([priority],axis=-1)
             input=np.reshape(input,[-1,4])
             bandwidth=self.scheduler.get_com_action(input)
+            
             action = np.argmax(bandwidth)
             c_new=action_space[action]
 
-
-    
         return c_new,action, priority
     def explore(self):
         return [random.randrange(self._action_dim_per_unit)

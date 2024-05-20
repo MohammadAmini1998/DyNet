@@ -10,21 +10,21 @@ FLAGS = config.flags.FLAGS
 
 #Hyperparameters: 
 
-gamma = 0.9  # reward discount factor
+gamma = .99 # reward discount factor
 gammaComm=.99
 # Hidden layers:
 h_critic = FLAGS.h_critic
-h1_critic = h_critic  # hidden layer 1 size for the critic
-h2_critic = h_critic  # hidden layer 2 size for the critic
-h3_critic = h_critic  # hidden layer 3 size for the critic
+h1_critic = FLAGS.h_critic  # hidden layer 1 size for the critic
+h2_critic = FLAGS.h_critic  # hidden layer 2 size for the critic
+h3_critic = FLAGS.h_critic  # hidden layer 3 size for the critic
 
 # Learning rates: 
-lr_actor = 0.00001   # learning rate for the actor
-lr_critic = 0.0001  # learning rate for the critic
+lr_actor =  0.0005   # learning rate for the actor
+lr_critic = 0.01  # learning rate for the critic
 lr_decay = 1  # learning rate decay (per episode)
 
 # The soft target update rate. 
-tau = 5e-2 
+tau = FLAGS.tau
 # It controls the rate at which the target network is updated towards the main network during training.
 # A smaller value results in a slower update rate.
 
@@ -70,13 +70,15 @@ class ActionSelectorNetwork:
         # Actor loss function (mean Q-values under current policy with regularization)
         self.actor_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES, scope=scope)
         self.responsible = tf.multiply(self.actions, self.a_onehot)
-        log_prob = tf.compat.v1.log(tf.reduce_sum(self.responsible, axis=1, keepdims=True))
-        entropy = -tf.reduce_sum(self.actions*tf.math.log(self.actions), 1) # calculates the entropy of the actions 
+        self.log_prob = tf.compat.v1.log(tf.reduce_sum(self.responsible, axis=1, keepdims=True))
+        self.entropy = -tf.reduce_sum(self.actions*tf.math.log(self.actions), 1) # calculates the entropy of the actions 
         #  Computes the actor loss by multiplying the log probabilities (log_prob) with the TD errors (self.td_errors),
         #  Adding a regularization term of 0.01 * entropy, and summing them all together.
-        self.loss = tf.reduce_sum(-(tf.multiply(log_prob, self.td_errors) + 0.01*entropy)) 
+        self.loss = tf.reduce_sum(-(tf.multiply(self.log_prob, self.td_errors))) 
 
         # This calculates the gradients of the actor loss (self.loss) with respect to the actor variables (self.actor_vars)
+        
+
         var_grads = tf.gradients(self.loss, self.actor_vars)
         self.actor_train_op = tf.compat.v1.train.AdamOptimizer(lr_actor * lr_decay).apply_gradients(zip(var_grads,self.actor_vars))
     # method prepares the observations for each agent, passes them to
@@ -106,11 +108,6 @@ class ActionSelectorNetwork:
                                         self.is_training_ph: False}))
 
     def action_for_state(self, state_ph, schedule_ph,count_ph):
-        # print( self.sess.run(self.message,
-        #                      feed_dict={self.state_ph: state_ph,
-        #                                 self.schedule_ph: schedule_ph,
-        #                                 self.count_ph:count_ph,
-        #                                 self.is_training_ph: False}))
         # print( self.sess.run(self.num,
         #                      feed_dict={self.state_ph: state_ph,
         #                                 self.schedule_ph: schedule_ph,
@@ -122,8 +119,16 @@ class ActionSelectorNetwork:
         
         
    
-       
+    #    print(self.sess.run(self.entropy,
+    #                          feed_dict={self.state_ph: state_ph,
+    #                                     self.schedule_ph: schedule_ph,
+    #                                     self.count_ph:count_ph,
+    #                                     self.is_training_ph: False}))
         return self.sess.run(self.actions,
+                             feed_dict={self.state_ph: state_ph,
+                                        self.schedule_ph: schedule_ph,
+                                        self.count_ph:count_ph,
+                                        self.is_training_ph: False}),self.sess.run(self.message,
                              feed_dict={self.state_ph: state_ph,
                                         self.schedule_ph: schedule_ph,
                                         self.count_ph:count_ph,
@@ -138,7 +143,13 @@ class ActionSelectorNetwork:
     #  The method does not return any value.
 
     def training_actor(self, state_ph, action_ph, schedule_ph,count_ph, td_errors):
-   
+        print (self.sess.run(self.loss,
+                             feed_dict={self.state_ph: state_ph,
+                                        self.action_ph: action_ph,
+                                        self.schedule_ph: schedule_ph,
+                                        self.count_ph:count_ph,
+                                        self.td_errors: td_errors,
+                                        self.is_training_ph: False}))
         return self.sess.run(self.actor_train_op,
                              feed_dict={self.state_ph: state_ph,
                                         self.action_ph: action_ph,
@@ -154,7 +165,7 @@ class CriticNetwork:
 
         self.sess = sess
         self.n_agent = n_agent
-        self.state_dim = 28
+        self.state_dim = 132
 
         if nn_id == None:
             scope = 'critic'
@@ -200,7 +211,7 @@ class CriticNetwork:
         # One step TD targets y_i for (s,a) from experience replay
         # = r_i + gamma*Q_slow(s',mu_slow(s')) if s' is not terminal
         # = r_i if s' terminal
-        targets = tf.expand_dims(self.reward_ph, 1) + tf.expand_dims(self.is_not_terminal_ph, 1) * gamma * self.slow_q_values
+        targets = tf.expand_dims(self.reward_ph, 1) +  gamma * self.slow_q_values
         sch_target = tf.expand_dims(self.reward_ph, 1) + gammaComm * self.slow_sch_q_values
 
         # 1-step temporal difference errors
@@ -257,16 +268,16 @@ class CriticNetwork:
                                    bias_initializer=tf.constant_initializer(0.1),  
                                    name='dense_c4', use_bias=False)(hidden_3)
         
-        h2_sch = tf.concat([hidden_2, sch_val], axis=1)
+        h2_sch = tf.concat([hidden_3, sch_val], axis=1)
 
         sch_hidden_3 = tf.keras.layers.Dense( h3_critic, activation=tf.nn.relu,
-                                   kernel_initializer=tf.random_normal_initializer(0., .1),
-                                   bias_initializer=tf.constant_initializer(0.1), 
+                                   kernel_initializer=tf.random_normal_initializer(0., .3),
+                                   bias_initializer=tf.constant_initializer(0.3), 
                                    use_bias=True, trainable=trainable, name='dense_c3_sch')(h2_sch)
 
-        sch_q_values = tf.keras.layers.Dense( 1, trainable=trainable,
-                                   kernel_initializer=tf.random_normal_initializer(0., .1),  
-                                   bias_initializer=tf.constant_initializer(0.1), 
+        sch_q_values = tf.keras.layers.Dense( 3, trainable=trainable,
+                                   kernel_initializer=tf.random_normal_initializer(0., .3),  
+                                   bias_initializer=tf.constant_initializer(0.3), 
                                    name='dense_c4_sch', use_bias=False)(sch_hidden_3)
         
         

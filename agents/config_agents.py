@@ -14,15 +14,15 @@ def config_agent(_flags):
 
     # RL setting
     flags.DEFINE_float("df", 0.9, "Discount factor")
-    flags.DEFINE_integer("b_size", 50000, "Size of the replay memory")
-    flags.DEFINE_integer("m_size", 256, "Minibatch size")
+    flags.DEFINE_integer("b_size", 200000, "Size of the replay memory")
+    flags.DEFINE_integer("m_size", 512, "Minibatch size")
     flags.DEFINE_integer("pre_train_step", 10, "during [m_size * pre_step] take random action")
 
     # Network training setting
     flags.DEFINE_float("a_lr", 0.00001, "Learning rate")
     flags.DEFINE_float("w_lr", 0.00001, "Learning rate")
     flags.DEFINE_float("c_lr", 0.0001, "Learning rate")
-    flags.DEFINE_float("tau", 0.05, "Learning rate")
+    flags.DEFINE_float("tau", 1e-2, "Learning rate")
     flags.DEFINE_boolean("use_action_in_critic", False, "Use guided samples")
     flags.DEFINE_integer("h_critic", 64, "Width of hidden layer for critic")
     flags.DEFINE_boolean("trainable_encoder", True, "Make the encoder trainable")
@@ -33,7 +33,7 @@ def config_agent(_flags):
     flags.DEFINE_boolean("train", True, "Training or testing")
 
     flags.DEFINE_integer("comm", 5, "Communication type")
-    flags.DEFINE_integer("capa", 3, "Capacity for comm")
+    flags.DEFINE_integer("capa", 2, "Capacity for comm")
     flags.DEFINE_boolean("e_share", False, "Share encoder")
     flags.DEFINE_boolean("s_share", False, "Share sender")
     flags.DEFINE_boolean("a_share", False, "Share aggregator")

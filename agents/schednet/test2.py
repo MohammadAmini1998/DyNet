@@ -1,1 +1,3 @@
-PI=3.1442
+import tensorflow as tf
+
+print(tf.__version__)
