@@ -136,6 +136,10 @@ def encoder_network(e_input, out_dim, h_num, h_level, name="encoder", trainable=
 #     mask_values = tf.cast(mask_values, dtype=tensor_values.dtype)  # Convert boolean mask to the same type as tensor_values
 #     filtered_tensor = tensor_values * mask_values  # Element-wise multiplication to zero-out values where mask_values are False
 #     return filtered_tensor
+def filter_tensor(tensor_values, mask_values):
+    mask_values = tf.cast(mask_values, dtype=tensor_values.dtype)  # Convert boolean mask to the same type as tensor_values
+    filtered_tensor = tensor_values * mask_values  # Element-wise multiplication to zero-out values where mask_values are False
+    return filtered_tensor
 
 def decode_concat_network(m_input_list, schedule, capacity, out_dim):
     inp = tf.stack(m_input_list, axis=-2)
@@ -145,10 +149,9 @@ def decode_concat_network(m_input_list, schedule, capacity, out_dim):
     mask = tf.reshape(flattened_schedule, [-1])  # No need to cast to tf.bool
 
     flattened_inp = tf.reshape(inp, [-1])  # Flatten inp to shape [-1]
+    filtered_result = filter_tensor(flattened_inp, mask)
+    # masked_msg = tf.boolean_mask(flattened_inp, mask)  # Apply the mask element-wise
 
-    masked_msg = tf.boolean_mask(flattened_inp, mask)  # Apply the mask element-wise
-
-    x = tf.reshape(masked_msg, [-1, capacity], name='scheduled')
-
+    x = tf.reshape(filtered_result, [-1, capacity*4], name='scheduled')
 
     return x, schedule,inp

@@ -31,7 +31,7 @@ class Scheduler:
         self.sess = sess
         self.n_agent = n_agent
         self.state_dim = 4
-        self.action_dim=4
+        self.action_dim=70
         
         if nn_id == None:
             scope = 'critic1'
