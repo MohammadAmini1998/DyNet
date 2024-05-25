@@ -88,7 +88,7 @@ def get_state(env, idx=(0,0), ind_episode=1., epsi=0.02):
 class Trainer(object):
   
     def __init__(self, env):
-        self.epsilon_decay=.00005
+        self.epsilon_decay=.0000025
         self.min_epsilon = 0.001
         self.env = env
         self._eval = Evaluation()
@@ -117,7 +117,7 @@ class Trainer(object):
         combinations = list(itertools.product(values, repeat=4))
 
         # Filter combinations where the sum of each element is not above 3
-        valid_combinations = [combo for combo in combinations if sum(combo)==2]
+        valid_combinations = [combo for combo in combinations if sum(combo)==1]
 
         # Convert combinations to action vectors
         for combo in valid_combinations:

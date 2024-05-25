@@ -185,7 +185,7 @@ class PredatorAgent(object):
         
         if np.random.rand()<epsilon:
 
-            action = np.random.randint(0, 10)
+            action = np.random.randint(0, 4)
             c_new=action_space[action]
       
         else:

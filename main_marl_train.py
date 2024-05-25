@@ -53,7 +53,7 @@ epsi_final = 0.02
 epsi_anneal_length = int(0.95*n_episode)
 mini_batch_step = n_step_per_episode
 target_update_step = n_step_per_episode*4
-epsilon_decay=.00005
+epsilon_decay=.0000025
 min_epsilon = 0.001
 n_episode_test = 100  # test episodes
 
@@ -129,7 +129,7 @@ with g.as_default():
     q_acted = tf.reduce_sum(y * action_one_hot, reduction_indices=1, name='q_acted')
 
     g_loss = tf.reduce_mean(tf.square(g_target_q_t - q_acted), name='g_loss')
-    optim = tf.train.RMSPropOptimizer(learning_rate=0.001, momentum=0.95, epsilon=0.01).minimize(g_loss)
+    optim = tf.train.RMSPropOptimizer(learning_rate=0.00007, momentum=0.95, epsilon=0.01).minimize(g_loss)
 
     # ==================== Prediction network ========================
     x_p = tf.placeholder(tf.float32, [None, n_input])
@@ -288,6 +288,7 @@ if IS_TRAIN:
                 # All agents take actions simultaneously, obtain shared reward, and update the environment.
             action_temp = action_all_training.copy()
             train_reward,V2I_Rate,V2V_Rate,V2V_success= env.act_for_training(action_temp)
+            V2I_rate_per_episode.append(np.mean(V2I_Rate))
             ep_reward+=train_reward
             record_reward[time_step] = train_reward
             # print(record_reward)

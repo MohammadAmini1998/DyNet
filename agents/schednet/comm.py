@@ -77,12 +77,12 @@ def generate_comm_network(count,obs_list, obs_dim_per_unit, action_dim, n_agent,
 def comm_encoded_obs(obs, c_input, action_dim, h_num, trainable=True):
     c_input = tf.concat([obs, c_input], axis=1)
     
-    hidden_1 = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
+    hidden_1 = tf.keras.layers.Dense(units=32, activation=tf.nn.relu,
                                      use_bias=True, trainable=trainable, name='sender_1')(c_input)
-    hidden_2 = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
+    hidden_2 = tf.keras.layers.Dense(units=32, activation=tf.nn.relu,
                                      use_bias=True, trainable=trainable, name='sender_2')(hidden_1)
 
-    hidden_3 = tf.keras.layers.Dense(units=h_num, activation=tf.nn.relu,
+    hidden_3 = tf.keras.layers.Dense(units=32, activation=tf.nn.relu,
 
                                      use_bias=True, trainable=trainable, name='sender_3')(hidden_2)
 
@@ -113,7 +113,7 @@ def encoder_network(e_input, out_dim, h_num, h_level, name="encoder", trainable=
                                        bias_initializer=tf.constant_initializer(0.1),  # biases
                                        use_bias=True, trainable=trainable, name=name+str(i))(hidden)
     
-    ret = tf.keras.layers.Dense(units=out_dim, activation=tf.nn.tanh,
+    ret = tf.keras.layers.Dense(units=out_dim, activation=tf.nn.relu,
                                 kernel_initializer=tf.random_normal_initializer(0., .1),  # weights
                                 bias_initializer=tf.constant_initializer(0.1),  # biases
                                 use_bias=True, trainable=trainable, name=name+"_out")(hidden)

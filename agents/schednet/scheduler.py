@@ -17,7 +17,7 @@ h3_critic = h_critic  # hidden layer 3 size for the critic
 
 # Learning rates: 
 lr_actor =  0.0001   # learning rate for the actor
-lr_critic = 0.001  # learning rate for the critic
+lr_critic = 0.0001   # learning rate for the critic
 lr_decay = 1  # learning rate decay (per episode)
 
 # The soft target update rate. 
@@ -31,7 +31,7 @@ class Scheduler:
         self.sess = sess
         self.n_agent = n_agent
         self.state_dim = 4
-        self.action_dim=10
+        self.action_dim=4
         
         if nn_id == None:
             scope = 'critic1'
@@ -100,17 +100,17 @@ class Scheduler:
     def generate_critic_network(self, s,action_dim, trainable):
         state_action = s
         
-        hidden = tf.keras.layers.Dense(h1_critic, activation=tf.nn.relu,
+        hidden = tf.keras.layers.Dense(32, activation=tf.nn.relu,
                                  kernel_initializer=tf.random_normal_initializer(0., .1),
                                  bias_initializer=tf.constant_initializer(0.1),  
                                  use_bias=True, trainable=trainable, name='dense_c11')(state_action)
 
-        hidden_2 = tf.keras.layers.Dense(h2_critic, activation=tf.nn.relu,
+        hidden_2 = tf.keras.layers.Dense(32, activation=tf.nn.relu,
                                    kernel_initializer=tf.random_normal_initializer(0., .1),
                                    bias_initializer=tf.constant_initializer(0.1),  
                                    use_bias=True, trainable=trainable, name='dense_c21')(hidden)
 
-        hidden_3 = tf.keras.layers.Dense( h3_critic, activation=tf.nn.relu,
+        hidden_3 = tf.keras.layers.Dense( 32, activation=tf.nn.relu,
                                    kernel_initializer=tf.random_normal_initializer(0., .1),
                                    bias_initializer=tf.constant_initializer(0.1), 
                                    use_bias=True, trainable=trainable, name='dense_c31')(hidden_2)

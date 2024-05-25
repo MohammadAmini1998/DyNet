@@ -19,8 +19,8 @@ h2_critic = FLAGS.h_critic  # hidden layer 2 size for the critic
 h3_critic = FLAGS.h_critic  # hidden layer 3 size for the critic
 
 # Learning rates: 
-lr_actor =  0.0005   # learning rate for the actor
-lr_critic = 0.01  # learning rate for the critic
+lr_actor =  0.00007    # learning rate for the actor
+lr_critic = 0.001   # learning rate for the critic
 lr_decay = 1  # learning rate decay (per episode)
 
 # The soft target update rate. 
@@ -248,17 +248,17 @@ class CriticNetwork:
     def generate_critic_network(self, s, sch_val, trainable):
         state_action = s
 
-        hidden = tf.keras.layers.Dense(h1_critic, activation=tf.nn.relu,
+        hidden = tf.keras.layers.Dense(32, activation=tf.nn.relu,
                                  kernel_initializer=tf.random_normal_initializer(0., .1),
                                  bias_initializer=tf.constant_initializer(0.1),  
                                  use_bias=True, trainable=trainable, name='dense_c1')(state_action)
 
-        hidden_2 = tf.keras.layers.Dense(h2_critic, activation=tf.nn.relu,
+        hidden_2 = tf.keras.layers.Dense(32, activation=tf.nn.relu,
                                    kernel_initializer=tf.random_normal_initializer(0., .1),
                                    bias_initializer=tf.constant_initializer(0.1),  
                                    use_bias=True, trainable=trainable, name='dense_c2')(hidden)
 
-        hidden_3 = tf.keras.layers.Dense( h3_critic, activation=tf.nn.relu,
+        hidden_3 = tf.keras.layers.Dense( 32, activation=tf.nn.relu,
                                    kernel_initializer=tf.random_normal_initializer(0., .1),
                                    bias_initializer=tf.constant_initializer(0.1), 
                                    use_bias=True, trainable=trainable, name='dense_c3')(hidden_2)
@@ -270,12 +270,12 @@ class CriticNetwork:
         
         h2_sch = tf.concat([hidden_3, sch_val], axis=1)
 
-        sch_hidden_3 = tf.keras.layers.Dense( h3_critic, activation=tf.nn.relu,
+        sch_hidden_3 = tf.keras.layers.Dense( 32, activation=tf.nn.relu,
                                    kernel_initializer=tf.random_normal_initializer(0., .3),
                                    bias_initializer=tf.constant_initializer(0.3), 
                                    use_bias=True, trainable=trainable, name='dense_c3_sch')(h2_sch)
 
-        sch_q_values = tf.keras.layers.Dense( 3, trainable=trainable,
+        sch_q_values = tf.keras.layers.Dense( 1, trainable=trainable,
                                    kernel_initializer=tf.random_normal_initializer(0., .3),  
                                    bias_initializer=tf.constant_initializer(0.3), 
                                    name='dense_c4_sch', use_bias=False)(sch_hidden_3)
