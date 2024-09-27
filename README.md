@@ -6,5 +6,7 @@ This repository contains the implementation of Dynamic Network (DyNet), a novel 
 
 ### System Model
 
-![Capture](https://github.com/user-attachments/assets/f7a5eba5-9cc8-4caf-8b7e-62df0fbba00d)
-![Capture1](https://github.com/user-attachments/assets/d6dd47b2-fd3c-42c7-9289-75bc77fb8be1)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/f7a5eba5-9cc8-4caf-8b7e-62df0fbba00d" alt="Capture" width="45%" />
+  <img src="https://github.com/user-attachments/assets/d6dd47b2-fd3c-42c7-9289-75bc77fb8be1" alt="Capture1" width="45%" />
+</p>
