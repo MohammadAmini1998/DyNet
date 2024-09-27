@@ -50,3 +50,17 @@ git clone [https://github.com/MohammadAmini1998/DyNet.git]
 cd DyNet
 python main.py
 ```
+## Environment: Predator and Prey (PP)
+
+- _n_ agents try to capture a randomly moving prey
+- Observation: Position of themselves, relative positions of prey (heterogeneous observation range)
+- Action: Move up/down/left/right
+- Reward: Get reward when they capture the prey
+- Performance metric: Number of steps taken to capture the prey
+
+<img src="img/env.png" width="500"/>
+
+### Citation
+This environment description is adapted from:  
+Foerster, Jakob N., et al. **"Learning to Schedule Communication in Multi-Agent Reinforcement Learning."** Advances in Neural Information Processing Systems 29 (2016): 2137-2145.
+
