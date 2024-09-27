@@ -1,11 +1,24 @@
 # Dynamic Bandwidth Allocation in Cooperative Multi-Agent Reinforcement Learning
 
-### Overview
+This is the code for implementing the __DyNet__ algorithm presented in the paper which will appear :: ["Dynamic Bandwidth Allocation in Cooperative
+Multi-Agent Reinforcement Learning"]().
 
-This repository contains the implementation of Dynamic Network (DyNet), a novel Multi-Agent Reinforcement Learning (MARL) algorithm designed to optimize bandwidth allocation in multi-agent systems. DyNet dynamically adjusts bandwidth usage based on each agent's needs using an Actor-Critic framework with Deep Q-Networks (DQN). A penalty term is incorporated into the objective function to encourage efficient communication, allowing agents to transmit messages only when necessary. The algorithm has been validated in vehicular networks, demonstrating its effectiveness in real-world applications.
-
-### System Model
-
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/f7a5eba5-9cc8-4caf-8b7e-62df0fbba00d" alt="Capture" width="45%" />
-</p>
+## Summary of the paper 
+Current Multi-Agent Reinforcement Learning
+(MARL) algorithms typically necessitate that agents transmit
+a fixed amount of information at each time step, which
+often results in sub-optimal bandwidth utilization. Agents are
+frequently constrained to a binary decision: either transmit a
+predetermined number of messages or none. This can lead to
+inefficiencies, particularly when multiple agents are using the
+same communication channel, thereby causing bottlenecks and
+degrading overall performance. To address this limitation, we
+propose a novel MARL algorithm named Dynamic Network
+(DyNet), an Actor-Critic framework that dynamically allocates
+bandwidth to each agent based on its needs, utilizing a Deep
+Q-Network (DQN) for bandwidth allocation. Furthermore, we
+introduce a penalty term within the objective function, which
+penalizes communication based on the number of messages
+transmitted. This approach ensures that agents communicate
+only when necessary. We validate the practical application of this
+algorithm in vehicular networks, demonstrating its effectiveness in real-world scenarios
