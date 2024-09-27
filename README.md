@@ -23,10 +23,10 @@ transmitted. This approach ensures that agents communicate
 only when necessary. We validate the practical application of this
 algorithm in vehicular networks, demonstrating its effectiveness in real-world scenarios
 
-### The overall architecture of SchedNet
+### The overall architecture of DyNet
 
 - Actor: Cinsists of action selector, message encoder and weight generator
 - Scheduler: Map from weights __w__ to badnwidth __b__
 - Critic: gives value and action values to the actor
 
-<img src="img/architecture.png" width="500"/>
+<img src="[img/architecture.png](https://github.com/user-attachments/assets/faf50cfe-34b0-4b22-abf4-f2feeefcf906)" width="500"/>
