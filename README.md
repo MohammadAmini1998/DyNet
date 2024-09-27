@@ -58,7 +58,7 @@ python main.py
 - Reward: Get reward when they capture the prey
 - Performance metric: Number of steps taken to capture the prey
 
-<img src="img/env.png" width="500"/>
+<img src="https://github.com/user-attachments/assets/9a788b87-d33f-49d3-af96-8654494008cb" width="500"/>
 
 ### Citation
 This environment description is adapted from:  
