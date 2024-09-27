@@ -37,7 +37,7 @@ algorithm in vehicular networks, demonstrating its effectiveness in real-world s
 ## How to run the code
 
 ```bash
-git clone https://github.com/rhoowd/sched_net.git
-cd sched_net
+git clone [https://github.com/MohammadAmini1998/DyNet.git]
+cd DyNet
 python main.py
 ```
