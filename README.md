@@ -38,7 +38,9 @@ algorithm in vehicular networks, demonstrating its effectiveness in real-world s
 -Weight generator: This block generates a weight based on the agent' observations.
 -Message encoder: This block encodes messages from agent's observations
 -Action selector: This block selects an action based on the agent's observations and message comming from other agetns. 
-![Capture1](https://github.com/user-attachments/assets/aa062796-f864-4b4a-a669-a84e062678f9)
+<p align="center">
+  <img src="[https://github.com/user-attachments/assets/aa062796-f864-4b4a-a669-a84e062678f9]" alt="Capture" width="50%" />
+</p>
 
 
 ## How to run the code
