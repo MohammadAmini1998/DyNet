@@ -30,5 +30,5 @@ algorithm in vehicular networks, demonstrating its effectiveness in real-world s
 - Critic: gives value and action values to the actor
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/f8f39905-f39c-4df7-9623-393fe7c2c0aa" alt="Capture" />
+  <img src="https://github.com/user-attachments/assets/f8f39905-f39c-4df7-9623-393fe7c2c0aa" alt="Capture" width="50%" />
 </p>
