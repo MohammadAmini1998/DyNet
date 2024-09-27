@@ -29,4 +29,4 @@ algorithm in vehicular networks, demonstrating its effectiveness in real-world s
 - Scheduler: Map from weights __w__ to badnwidth __b__
 - Critic: gives value and action values to the actor
 
-<img src="[img/architecture.png](https://github.com/user-attachments/assets/faf50cfe-34b0-4b22-abf4-f2feeefcf906)" width="500"/>
+![Capture](https://github.com/user-attachments/assets/f8f39905-f39c-4df7-9623-393fe7c2c0aa)
