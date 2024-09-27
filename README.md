@@ -65,4 +65,12 @@ This environment description is adapted from the paper:
 [Learning to Schedule Communication in Multi-Agent Reinforcement Learning](https://arxiv.org/pdf/1902.01554).
 
 
+## Environment: Vehicular Networks
+
+We consider an environment with \( M \) V2I links and \( K \) V2V links. The V2I links are each assigned fixed orthogonal spectrum sub-bands, where the \( m \)-th V2I link occupies the \( m \)-th sub-band, and all V2I transmission power remains constant. In contrast, the transmission power of the V2V links is dynamic and can vary. 
+
+The primary challenge is to design an efficient spectrum-sharing scheme for the V2V links that maximizes both the sum capacity of the V2I links and the packet delivery rate of the V2V links.
+### Citation 
+L. Liang, H. Ye, and G. Y. Li, "Spectrum sharing in vehicular networks based on multi-agent reinforcement learning," IEEE Journal on Selected Areas in Communications, vol. 37, no. 10, pp. 2282-2292, Oct. 2019.
+
 
