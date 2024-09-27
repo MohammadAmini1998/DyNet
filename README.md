@@ -61,8 +61,8 @@ python main.py
 <img src="https://github.com/user-attachments/assets/9a788b87-d33f-49d3-af96-8654494008cb" width="500"/>
 
 ### Citation
-This environment description is adapted from:  
-Foerster, Jakob N., et al. **"Learning to Schedule Communication in Multi-Agent Reinforcement Learning."** Advances in Neural Information Processing Systems 29 (2016): 2137-2145.
+This environment description is adapted from the paper:  
+[Learning to Schedule Communication in Multi-Agent Reinforcement Learning](https://arxiv.org/pdf/1902.01554).
 
 
 
